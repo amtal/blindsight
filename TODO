@@ -1,0 +1,51 @@
+COULD-A
+=======
+
+[ ] Check watcher polling performance, improve queuing if necessary.
+    Current method is ghetto workaround for event drops by polling more often,
+    probably breaks under load/uses more CPU than necessary/introduces user
+    input latency, or all of the above.
+
+SHOULD-A
+========
+
+[ ] scale log-scale on histogram to match palette depth based on buf_sz
+
+[ ] figure out what entropy scaling should be depending on size
+
+[~] dwarf fortress depth-style "palettes"
+    (entropy is 0123456789, rescaled up to limit)
+
+[~] composition of colour + contents!
+    (colour by ascii, content by entropy)
+
+[ ] have render_fn return 'slide' flag, accumulate per-row
+    if row is slid, render only 1x ***, star out address bar hd-style
+
+    tradeoffs:
+    + can use this to implement heapviz/pagetable viewers!
+    + further compression, more effective bytes per page!
+    - lose some sense of proportion
+
+    + addr bar is handled in same loop; can probably do by tampering with
+      row-loop variables, mutability ftw
+    + can be toggled on/off, for any methods that support it
+      (could do generic equality-collapse pass for things that don't!)
+    - bpp no longer precise if slide occurs
+    - needs precondition on render_fn to be called on sequential addrs
+
+    ? rows get collapsed, but repetition is checked on cell level... weird?
+
+    => need to evaluate heapviz/pagetableviz to determine usefulness
+
+       might be worth doing a simple equality-compressor that can be toggled
+       and is view-agnostic
+
+WOULD-A
+=======
+
+[~] ubsan+asan+tsan clean lol (not msan)
+
+[!] style: sentence capitalized/punctuated // comments on separate lines before
+    blocks, covering 'why' as per Modern C
+
