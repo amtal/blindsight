@@ -6,6 +6,8 @@ COULD-A
     probably breaks under load/uses more CPU than necessary/introduces user
     input latency, or all of the above.
 
+[ ] Macro-wrap a render_fun caller, so compiler can inline stuff?
+
 SHOULD-A
 ========
 

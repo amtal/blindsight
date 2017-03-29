@@ -1,4 +1,4 @@
-#!/usr/bin/tcc -run -lblindsight -lcapstone
+#!/usr/bin/tcc -run -L/usr/local/lib -lblindsight -lcapstone
 #include "blindsight.h"
 #include <ncurses.h>
 #include <string.h>

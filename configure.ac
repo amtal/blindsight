@@ -11,7 +11,7 @@
 # Without it, this could literally be a single C file you wget and tcc -run.
 #
 # Serious second thoughts about going down the path at all.
-AC_INIT([blindsight],[0.0.3],[amtal@github])
+AC_INIT([blindsight],[0.0.4],[amtal@github])
 
 ##
 ## Automake dependencies and config.
@@ -79,7 +79,7 @@ AC_CHECK_HEADERS([ncursesw/ncurses.h]) # Ubuntu layout, needs ifdef
 AC_CHECK_PROG([tcc],[tcc],[yes],[no])
 AC_CHECK_HEADERS([libtcc.h], , [tcc=no])
 # Debian ships only libtcc.a, I'm want an .so VVVVVVV cuz I'm lazy
-AC_SEARCH_LIBS([tcc_new], [tcc], , [tcc=no], [-dynamic -ldl])
+AC_SEARCH_LIBS([tcc_new], [tcc], , [tcc=no], [-shared -ldl])
 
 AC_MSG_CHECKING([if tcc_relocate is the okay one])
 AC_COMPILE_IFELSE(

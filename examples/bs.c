@@ -1,4 +1,4 @@
-#!/usr/bin/tcc -run -lblindsight
+#!/usr/bin/tcc -run -L/usr/local/lib -lblindsight
 #include "blindsight.h"
 #include <assert.h>
 #include <math.h>
@@ -123,22 +123,30 @@ RF(byte_pixels) {
         }
 }
 
-/* vim's xxd.c in default mode */
+/* (almost) vim's xxd.c in default mode */
 RF(xxd) {
-        for (int i=0, col=x; i<buf_sz; i+=2, col+=5) {
-                mvprintw(y, col, "%02x%02x ", buf[i], buf[i+1]);
+        for (int i=0, xi=x; i<buf_sz; i+=2, xi+=5) {
+                mvprintw(y, xi, "%02x%02x ", buf[i], buf[i+1]);
         }
-        for (int i=0, col=x+41; i<buf_sz; i++, col++) {
+        mvchgat(y, x, 41, A_NORMAL, 0, NULL);
+        for (int i=0, xi=x+41; i<buf_sz; i++, xi++) {
+                int color = 0;
+                unsigned char txt = '.';
                 switch(buf[i]) {
-                case ' ' ... '~':
-                        mvaddch(y, col, buf[i]);
+                case 0: // only difference from xxd; hide nulls as HexII does
+                        txt = ' ';
                 break;
-                default:
-                        mvaddch(y, col, '.');
+                case ' ' ... '~':
+                        color = 3;
+                        txt = buf[i];
+                break;
+                case 0xff:
+                        color = 1;
+                break;
                 }
+                mvaddch(y, xi, txt);
+                mvchgat(y, xi, 1, A_NORMAL, color, NULL);
         }
-        mvchgat(y, x, 57, A_NORMAL, 0, NULL);
-
 }
 
 /* Matching Corkami's spec, although I'm considering removing the : from the
@@ -149,8 +157,8 @@ RF(xxd) {
  * Color scheme sorta-matches Radare 2, with the addition of grayscale hex.
  */
 RF(hexii) { 
-        for (int i=0, xc=x; i<buf_sz*2; i+=2, xc+=2) {
-                uint8_t c = *(uint8_t*)(buf+i/2);
+        for (int i=0, xi=x; i<buf_sz*2; i+=2, xi+=2) {
+                uint8_t c = *(uint8_t*)(buf + i/2);
 
                 char* fmt = 0;
                 int arg = 0, clr = 0;
@@ -170,16 +178,16 @@ RF(hexii) {
                         // plain .txt, but I doubt that's important for this
                         // kind of viewer.
                         fmt = ".%c";
-                        arg = *(char*)buf;
+                        arg = c;
                         clr = 3;
                 break;
                 default:
                         fmt = "%02X";
-                        arg = *(unsigned char*)buf;
+                        arg = c;
                         clr = 0 + pal->gray[8 + (c >> 4)];
                 }
-                mvprintw(y, xc, fmt, arg);
-                mvchgat(y, xc, 2, A_NORMAL, clr, NULL);
+                mvprintw(y, xi, fmt, arg);
+                mvchgat(y, xi, 2, A_NORMAL, clr, NULL);
         }
 }
 
