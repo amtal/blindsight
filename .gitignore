@@ -1,10 +1,18 @@
+# Autotools stuff
 build-aux/
 autom4te.cache/
 aclocal.m4
 Makefile.in
+configure
+
+# Configuration stuff
 config.log
 config.status
+Makefile
+
+# Libtool and build artefacts
 .deps/
 libtool
-configure
-Makefile
+.libs
+.dirstamp
+libblindsight?la*

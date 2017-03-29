@@ -4,6 +4,8 @@ High-density hex viewer focused on visual pattern matching on <1MB binaries.
 covered on Windows. This is a Unix version you can quickly extend and prototype
 on. Supports live code reload for smooth domain-specific prototyping.
 
+![Quick usage demonstration on /bin/ls](https://i.imgur.com/dvQ6Syo.gif)
+
 # Design Rationale
 
 > "Cause still unknown after several thousand engineering-hours of review. Now
@@ -22,11 +24,13 @@ initial reconnaissance, seed whimsical hypotheses, and test them swiftly.
 Stateful operations like edits on binary formats should be formalized in
 version controlled tools, not shot from the hip and left undocumented. Your end
 goal should be elegant domain-specific parsers and pretty-printers, not some
-kludge caged in a power-of-2 aligned grid. See
-[Scapy](https://www.secdev.org/projects/scapy/),
-[Nom](https://crates.io/crates/nom), or
-[Parsec](https://wiki.haskell.org/Parsec) and its
-[variations](https://hackage.haskell.org/package/trifecta) as examples.
+kludge caged in a power-of-2 aligned grid. See [Scapy], [Nom], or [Parsec] and
+its [variations] as examples.
+
+[Scapy]: https://www.secdev.org/projects/scapy/
+[Nom]: https://crates.io/crates/nom
+[Parsec]: https://wiki.haskell.org/Parsec
+[variations]: https://hackage.haskell.org/package/trifecta
 
 # Installing
 
@@ -44,6 +48,8 @@ sudo make install
 
 Run some examples (like `./examples/bs.c`) which are all C files executable via
 the Tiny C Compiler. 
+
+![Live code reload demonstration](https://i.imgur.com/9Ez24v5.gif)
 
 You can write your own, copy-pasting liberally from examples. Saved code will
 be re-loaded by running instances on supported platforms.

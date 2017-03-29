@@ -191,15 +191,6 @@ RF(hexii) {
         }
 }
 
-/* Color potential ARM Cortex ROM/RAM pointers */
-RF(dw_ptr) {
-        uint32_t dw = *(uint32_t*)buf;
-        bool is_data = (dw & 3) == 0 && dw >= 0x20000000 && dw <= 0x3FFFffff;
-        bool is_code = (dw & 3) == 1 && dw > 0 & dw <= 0x1FFFffff;
-        mvprintw(y, x, "%08x", dw);
-        mvchgat(y, x, 8, A_NORMAL, is_code ? 1 : (is_data ? 3 : 7), 0);
-}
-
 RF(bits) {
         // assumes 8 bits per char
         // please do not run on obscure DSPs
@@ -225,7 +216,6 @@ const view default_views[] = {
         {1, 9, 4, render_hexii, "HexII", .needs = F_256C},
         {1, 3, 1, render_hexii, "HexII", .needs = F_256C},
         {1, 59, 16, render_xxd, "xxd"},
-        {1, 9, 4, render_dw_ptr, "arm-ptr"},
         {1, 8, 1, render_bits, "bits"},
         {0}, // last
 };

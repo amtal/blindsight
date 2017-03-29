@@ -4,6 +4,15 @@
 #include <string.h>
 #include <capstone/capstone.h>
 
+/* Color potential ARM Cortex ROM/RAM pointers */
+RF(dw_ptr) {
+        uint32_t dw = *(uint32_t*)buf;
+        bool is_data = (dw & 3) == 0 && dw >= 0x20000000 && dw <= 0x3FFFffff;
+        bool is_code = (dw & 3) == 1 && dw > 0 & dw <= 0x1FFFffff;
+        mvprintw(y, x, "%08x", dw);
+        mvchgat(y, x, 8, A_NORMAL, is_code ? 1 : (is_data ? 3 : 7), 0);
+}
+
 RF(dasm) {
         csh hnd;
         cs_insn *isn;
@@ -22,6 +31,7 @@ RF(dasm) {
 }
 
 const view views[] = {
+        {1, 9, 4, render_dw_ptr, "arm-ptr"},
         {1, 5, 2, render_dasm, "dasm-thumb"},
         {0}, // last
 };
