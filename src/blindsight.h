@@ -3,12 +3,6 @@
 #include <stdint.h>
 #include <stddef.h> // size_t
 
-typedef enum {
-        F_256C = 1,   // $TERM == xterm-256color or similar
-        F_WPAIRS = 2, // 16-bit color pair limit, requires ncursesw (wide)
-        F_UTF8 = 4,   // locale should be en_US.UTF-8 or similar
-} feature;
-
 /*
  * Palettes set up for ncurses mvchgatt color pairs.
  */
@@ -17,8 +11,14 @@ typedef struct {
     short fg_gray[16][26];
     short gray_gray[26][26];
 } pal;
-// Gonna try moving this to a struct and an arg to deal with reloading better.
+// Gonna try moving this ^ to a struct and an arg to deal with reloading better.
 // However, this struct is dependency hell...
+
+typedef enum {
+        F_256C = 1,   // $TERM == xterm-256color or similar
+        F_WPAIRS = 2, // 16-bit color pair limit, requires ncursesw (wide)
+        F_UTF8 = 4,   // locale should be en_US.UTF-8 or similar
+} feature;
 
 typedef struct {
         /* Several views are well-adapted to scaling `bytes`, while keeping

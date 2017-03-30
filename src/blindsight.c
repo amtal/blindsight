@@ -20,6 +20,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include "blindsight.h"
+#include "palette.h"
 #include "watcher.h"
 //#include <stdint.h> 
 /* TODO: purge all non-unsigned with righteous flame, except those mandated by ncurses I guess >_>
@@ -80,140 +81,6 @@ void check_features_and_warn(const view* views, const char* locale) {
                 reset_prog_mode();
         }
 }
-
-pal palette_init() {
-        pal pal = {
-                .gray = {
-                        0x10, // rgb:000
-                        0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 
-                        0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf3,
-                        0xf4, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 
-                        0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff,
-                        0xe7 // rgb:fff
-                },
-                .fg_gray = {{0}},
-                .gray_gray = {{0}},
-        };
-
-        assert(!start_color());
-        assert(has_colors());
-        /* The default xterm-256color palette, and hopefully others, goes:
-         *
-         * 0..7         8 dark [black RGYB magenta cyan white] \__prone to remapping!
-         * 8..f         8 light [*]                            /
-         * 10..e7       6x6x6 rgb cube (black:0x10, white:0xe7)
-         * e8..ff       24-value gray sweep (doesn't reach rgb000/fff!)
-         *
-         * When using ncurses built with extra color pair support, we've got
-         * 0x7fff fg-bg pairs to play with. Constructed ncurses palettes
-         * probably fall into the following categories:
-         *
-         *      [Core]
-         * - Basic 16 colors. These retain any custom style, and support inversion.
-         *   Pro: maintain look and feel. Con: only useable for classification,
-         *   likely to run into invisible characters when using background as
-         *   an extra dimension.
-         * - Worth mapping all 256 basic colors on a static background for
-         *   color debug purpose, anyway. That's 1/0x7f palette budget.
-         *
-         *      [Sweeps]
-         * - Square unicode (or DOS CP437 or w/e) pixels are handy for retaining
-         *   proportions. Full grayscale sweep of both takes 0x2a4.
-         * - Cube helix sweep of hue to extend the grayscale sweep. Should add
-         *   an extra couple of bits of information per character, which is
-         *   clutch.
-         *
-         *      [Classes overlaid on sweeps]
-         * - Basic 16 colors on grayscale might work, regardless of themes.
-         * - Otherwise, import some of the nicer ones (hot/cold delta) and
-         *   overlay.
-         *
-         * Shouldn't run out of budget until heavy use of cube helix on cube
-         * helix. Probably don't need palette swapping, except maybe when
-         * versioning stabilizes. (Since any external render funs will depend
-         * on palettes.)
-         */
-        use_default_colors();  // roll with defaults for -1...
-        assume_default_colors(0x7,0x10); // can use this to remap dynamically, per-renderer palette load?
-
-        
-        short base = 0;
-        for (short c=0; c<256; c++) init_pair(base+c, c, -1);
-        base += 256;
-
-        /* On systems with 256 max color pairs, don't call init_pair beyond
-         * that range; it messes up what palette we do have. */
-        if (base >= COLOR_PAIRS) return pal;
-
-        for (short fg=0; fg<16; fg++) {
-                for (short bg=0; bg<26; bg++) {
-                        short pair = base + fg*26 + bg; // TODO running counter this, lol
-                        init_pair(pair, fg, pal.gray[bg]);
-                        pal.fg_gray[fg][bg] = pair;
-                }
-        } // experimental: background /w contrast
-        base += 26*16;
-        for (short fg=0; fg<26; fg++) {
-                for (short bg=0; bg<26; bg++) {
-                        short pair = base + fg*26 + bg;
-                        bool palette_hack = false; // HACK: oookay this can't be portable
-                                                  // but on this version of ncurses one of the
-                                                  // high bits inverts the fg-bg colors, so while
-                                                  // building the palette I'm un-inverting it
-                                                  //
-                                                  // tracing down bug in source and avoiding the
-                                                  // problematic bit (and there's probably more)
-                                                  // will probably be more portable :)
-                                                  //
-                                                  // It gets weirder. That's nor normal; it just 
-                                                  // somehow sometimes gets into that mode. Colors 
-                                                  // inverted, except this small range. WAT.
-                        if (palette_hack && (fg<2 || (fg==2 && bg<19))) {
-                                init_pair(pair, pal.gray[bg], pal.gray[fg]);
-                        } else {
-                                init_pair(pair, pal.gray[bg], pal.gray[fg]);
-                        }
-                        pal.gray_gray[fg][bg] = pair;
-                }
-        } // tone-on-tone, for square unicode pixels
-
-        /* technically unused, since V afaik doesn't work?
-         * or at least .Xresources takes precedence */
-        assert(can_change_color()); 
-        color_content(COLOR_BLACK, 0, 0, 0); // I see a background and I wanted it painted black
-        //bkgdset(COLOR_PAIR(255 + 8*26) | '#');
-        return pal;
-}
-
-void palette_debug_dump(pal* pal) { // for when ^^^ inevitably breaks for mysterious reasons
-        erase();
-        mvprintw(0, 8, "[linear dump, 0x%x colors, 0x%x pairs]", COLORS, COLOR_PAIRS);
-        for (int x=0;x<128;x++) {
-                mvprintw(1, x, "%x", x >> 4);
-                mvprintw(2, x, "%x", x & 7);
-                for (int y=0;y<12;y++) {
-                        mvprintw(3+y, x, "P");
-                        mvchgat(3+y, x, 1, A_NORMAL, y*128+x, NULL);
-                }
-        }
-
-        mvprintw(18, 8, "[sweeps]");
-        for (int y=0;y<16;y++) {
-                for (int x=0;x<26;x++) {
-                        mvprintw(y+19, x, "#");
-                        mvchgat(y+19, x, 1, A_NORMAL, 256+x+y*26, NULL);
-                }
-        }
-        for (int y=0;y<26;y++) {
-                for (int x=0;x<26;x++) {
-                        mvprintw(y+41, x, "$");
-                        mvchgat(y+41, x, 1, A_NORMAL, pal->gray_gray[y][x], NULL);
-                }
-        }
-        refresh();
-        getchar();
-}
-
 
 pal screen_init() {
         initscr();
@@ -456,7 +323,7 @@ void render_info(view v, viewport vp, const pal* pal) {
         //attr_on(A_REVERSE, NULL); // eh, this looks poor
         mvprintw(vp.max_y - 0, vp.max_x - 62, " \"%s\" b/char:%.3g b/cell:0x%x b/page:0x%X ", 
                 // may need to compensate for top address line size, if later added V
-                v.name, (float)v.bytes / (v.x * v.y), v.bytes, vp.bytes_per_full_row*(vp.max_y));
+                v.name, (float)v.bytes / (v.x * v.y), v.bytes, vp.bytes_per_full_row*vp.max_y/v.y);
         //attr_off(A_REVERSE, NULL);
 
         // for reference: BZ's recent versions top out the default binary view at 10x12=120bpc
@@ -466,13 +333,13 @@ void render_info(view v, viewport vp, const pal* pal) {
         //mvprintw(vp.max_y - 1, vp.max_x - 55, " dbg: 0x%x/colors, 0x%x/pairs ", COLORS, COLOR_PAIRS);
 }
 
-void render_scroll(size_t buf_sz, size_t cursor, viewport vp) {
+void render_scroll(size_t buf_sz, size_t cursor, view v, viewport vp) {
         attr_set(A_NORMAL, -1, NULL);
 
         // overview "scroll" address bar (not sure whether any address info will actually go there, yet)
         size_t bar_step = buf_sz / (vp.max_y + 1);
         for (int y=0; y<vp.max_y+1; y++) {
-                size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y;
+                size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y / v.y; // close 'nuff
                 size_t bar = bar_step * y;
                 size_t bar_end = bar + bar_step;
                 if ((cursor >= bar && cursor <= bar_end) ||
@@ -736,7 +603,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
 
 
                 /* render different windows/panels */
-                render_scroll(buf_sz, cursor, vp);
+                render_scroll(buf_sz, cursor, v, vp);
                 render_grid(grid_x, buf_sz, cursor, buf, v, vp, &pal);
                 render_info(v, vp, &pal);
 

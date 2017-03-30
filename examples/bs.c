@@ -7,63 +7,84 @@
 #include <ncurses.h>
 
 
-/* Shannon entropy, takes a string of symbols and counts occurances of
- * particular symbols. Then, predicts ideal compression for that string in
- * bits. Disregards ordering. Works best with large samples? Okay at spotting
- * code, occasionally crypto material. 
+/* A histogram view shows symbol (byte) distribution inside an address window.
+ * It's not very space-efficient to show, so we can try and summarize it.
  *
- * End use is similar to Chi Squared test, which determines distance from what
- * a uniform byte distribution would generate.
+ * - Shannon entropy is a measure of the information represented by the
+ *   particular symbol distribution in a given address window.
+ * - The chi-square test is a measure of how far a particular distribution is
+ *   from the expected distribution. (For us, the expected distribution is
+ *   probably a uniform one produced by encrypted data.)
+ *
+ * Neithers take symbol ordering into account, just their distribution in the
+ * window. Shannon entropy is a little easier to display, so here it is.
  * */
 RF(ent) {
-        /* Cache repetitive FLOPS in a lookup table calculated on first render.
-         * Max buf_sz limited by LUT size, chosen based on performance trial & 
-         * error on an ancient netbook. */
-        static double lut[256];
-        static size_t lut_for_sz = 0;
+        uint16_t count[256] = {0}; // histogram of symbol occurances
+        uint8_t classes = 0; // mask of bits seen, used to detect ascii
 
-        assert(buf_sz <= sizeof(lut) && "entropy cache size limit");
-        if (lut_for_sz != buf_sz) {
-                for (int i=0; i<buf_sz; i++) {
+        for (int i=0;i<buf_sz;i++) {
+                count[buf[i]]++;
+                classes |= buf[i];
+        }
+
+        /* We're always dealing with 256 symbols, since we work in bytes.
+         * Windows are often smaller than that, though; worst-case compression
+         * for a 128-byte window would be 7 bits, 16-byte window 4 bits, etc. 
+         *
+         * For such smaller windows, we'll re-scale the output to '8' bits to
+         * keep the shading range consistent while switching scales.
+         */
+        static double scale;
+        static double lut[512] = {0}; // memoize FP calc for small buf_sz
+        static size_t lut_for_sz = 0;
+        if (lut_for_sz != buf_sz && buf_sz <= sizeof(lut)/sizeof(lut[0])) {
+                lut_for_sz = buf_sz;
+                for (int i=1; i<buf_sz; i++) {
                         double t = (double)i / buf_sz;
                         lut[i] = -t * log2(t);
                 }
-                lut_for_sz = buf_sz;
+                scale = buf_sz >= 256 ? 1.0 : (8.0 / log2(buf_sz));
         }
 
-        // histogram symbol occurances, then accumulate entropy based on counts
-        uint8_t count[256] = {0}; // 256 possible symbols in a byte
         double entropy = 0.0;
-        uint8_t classes = 0;
-
-        assert(buf_sz <= sizeof(count) && "uint8_t limit on histogram");
-        for (int i=0;i<buf_sz;i++) {
-                uint8_t c = (uint8_t)(buf[i]);
-                count[c]++;
-                classes |= c;
+        if (buf_sz <= sizeof(lut)/sizeof(lut[0])) {
+                for (int i=0;i<256;i++) entropy += lut[count[i]];
+                entropy *= scale;
+        } else { /* unmemoized */
+                for (int i=0;i<256;i++) {
+                        if (!count[i]) continue;
+                        double prob = (double)count[i] / buf_sz;
+                        entropy += prob * log2(1 / prob);
+                }
         }
-        for (int i=0;i<256;i++) if (count[i]) entropy += lut[count[i]];
 
-        // render
-        
-        // TODO fix 0..8thness / highlight particularly high-entropy (key/crypto) regions!
-        // TODO display class with (ideally) colour, ugh color pairs
-        // not sure what to display; just character classes, or low entropy bit?
+        /* There's two approaches that seem to work:
+         *
+         * - Floor(entropy) as '01234567', char classes as foreground color.
+         * - Floor(entropy) as grayscale background, char classes as foreground
+         *   color, fractional part rendered as digit.
+         *
+         * The latter is more cluttered, less intuitive, and depends on
+         * ncursesw + fancy terminal. I'm keeping it for experimentation.
+         * */
         int hi = (int)floor(entropy);
-        //int lo = (int)(entropy * 10) % 10;
+        int lo = (int)(entropy * 10) % 10;
         if (count[0] == buf_sz) {
-                mvprintw(y, x, " "); // TODO benchmark using right funcs instead of printw on everything
+                mvprintw(y, x, " "); // all 0s
                 mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[3][0], NULL);
         } else if (count[255] == buf_sz) {
-                mvprintw(y, x, "#");
-                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[3][0], NULL);
-        } else if (classes >= ' ' && classes <= 0x7f) {
-                // ASCII + DEL, close 'nuff
-                mvprintw(y, x, "a");
-                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[4][hi*3], NULL);
-        } else {
-                mvprintw(y, x, "$");
+                mvprintw(y, x, "#"); // all Fs
+                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[1][0], NULL);
+        } else if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
+                //mvprintw(y, x, "a"); // ascii
+                mvprintw(y, x, "%01x", hi); // ascii
                 mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[3][hi*3], NULL);
+        } else {
+                //mvprintw(y, x, "+"); // binary
+                mvprintw(y, x, "%01x", lo); // binary
+                int fg = entropy > 7.8 ? 5 : 4;
+                mvchgat(y, x, 2, A_NORMAL, pal->fg_gray[fg][hi*3], NULL);
         }
 }
 
@@ -93,14 +114,15 @@ RF(hist_square) {
 
         assert(buf_sz <= 0xFFff && "uint16_t limit");
         uint16_t count[256] = {0}; 
-        for (int i=0;i<buf_sz;i++) count[(uint8_t)(buf[i])]++;
+        for (int i=0;i<buf_sz;i++) count[(buf[i])]++;
 
         // render hist
+        double scale = 24.0 / log2(buf_sz);
         for (int row=0;row<8;row++) {
                 for (int col=0;col<16;col++) {
-                        uint16_t top = (uint16_t)log2((double)count[row * 32 + col]);
-                        uint16_t bot = (uint16_t)log2((double)count[row * 32 + col + 16]); // something weird here
-                        mvchgat(y+1+row, x+1+col, 1, A_NORMAL, pal->gray_gray[0 + bot*2][0 + top*2], NULL);
+                        uint16_t top = (uint16_t)(scale * log2((double)count[row * 32 + col]));
+                        uint16_t bot = (uint16_t)(scale * log2((double)count[row * 32 + col + 16]));
+                        mvchgat(y+1+row, x+1+col, 1, A_NORMAL, pal->gray_gray[0 + bot][0 + top], NULL);
                 }
         }
 }
@@ -206,13 +228,14 @@ RF(bits) {
 
 const view default_views[] = {
 /*      {y, x, bs, fn,         name},   */
-        {1, 1, 64, render_ent, "entropy", .needs = F_256C | F_WPAIRS, .min_bytes=16, .max_bytes=128},
-//        {1, 1, 32, render_ent, "ent32"},
-//        {1, 1, 16, render_ent, "ent/16", .needs = F_256C | F_WPAIRS},
-        {9, 17, 1024, render_hist_square, "bytehist", .needs = F_256C | F_WPAIRS | F_UTF8},
-        {1, 65, 128, render_byte_pixels, "bytepix", .needs = F_256C | F_WPAIRS | F_UTF8},
-//        {1, 129, 256, render_byte_pixels, "pixbytes", .needs = F_256C | F_WPAIRS | F_UTF8},
-//        /* currently, wide views cause an error if the screen's too narrow */
+        {1, 1, 32, render_ent, "entropy", 
+                .min_bytes=16, .max_bytes=256,
+                .needs = F_256C | F_WPAIRS},
+        {9, 17, 1024, render_hist_square, "bytehist", 
+                .min_bytes=64, .max_bytes=4096,
+                .needs = F_256C | F_WPAIRS | F_UTF8},
+        {1, 65, 128, render_byte_pixels, "bytepix", // errors on narrow screens
+                .needs = F_256C | F_WPAIRS | F_UTF8},
         {1, 9, 4, render_hexii, "HexII", .needs = F_256C},
         {1, 3, 1, render_hexii, "HexII", .needs = F_256C},
         {1, 59, 16, render_xxd, "xxd"},
