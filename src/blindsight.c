@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include "blindsight.h"
 #include "palette.h"
+#include "cmd.h"
 #include "watcher.h"
 //#include <stdint.h> 
 /* TODO: purge all non-unsigned with righteous flame, except those mandated by ncurses I guess >_>
@@ -188,8 +189,6 @@ int key_poll(bool* trigger_reload) {
         return key;
 }
 
-void render_help();
-
 /* Major actions on the view that key presses can request. Bounds checked
  * later, closer to the state the bounds checking is actually performed on.
  *
@@ -204,6 +203,24 @@ typedef struct {
         signed zoom;    // view byte zoom, if supported
         // window sizes?
 } input_req; 
+
+cmd KEYS[] = {
+        {"x",   "Exit program."},
+        {"h?",  "Hotkey cheatsheet and help screen."},
+        {.desc = "Cursor movement"},
+        {"wasd","Vertical scroll by row, horizontal by cell."},
+        {"WS",  "Vertical scroll by page."},
+        {"g",   "Go to address 0x0."},
+        {.desc = "View control"},
+        {"qe",  "Flip through the view list. Acts like a \"zoom\"."},
+        {"QE",  "Zoom bytes-per-cell scale on current view, if supported."},
+        {.desc = "Debug"},
+        {"p",   "Palette dump screen, for triaging color issues."},
+        {"jJ",  "Debug background color test."},
+        {0}
+};
+/* Printed Nethack-guidebook style in --help, 
+ * vim-cheatsheet style in help screen. */
 
 input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         input_req req = {0};
@@ -239,7 +256,7 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         case 'g': req.jump = SIZE_MAX;  break;
         /* help screen */
         case 'h':
-        case '?': render_help();        break;
+        case '?': cmd_render_help(KEYS);        break;
         /* debug palette dump to deal with weirdness */
         case 'p': palette_debug_dump(pal);         break;
         /* TEST TEST TEST DEBUG/IDEA STUFF */
@@ -248,69 +265,6 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         }
 
         return req;
-}
-
-const struct {
-        const char* keys; // optional
-        const char* desc; // mandatory until last entry
-} KEYS[] = {
-        {"x",   "Exit program."},
-        {"h?",  "Hotkey cheatsheet and help screen."},
-        {.desc = "Cursor movement"},
-        {"wasd","Vertical scroll by row, horizontal by cell."},
-        {"WS",  "Vertical scroll by page."},
-        {"g",   "Go to address 0x0."},
-        {.desc = "View control"},
-        {"qe",  "Flip through the view list. Acts like a \"zoom\"."},
-        {"QE",  "Zoom bytes-per-cell scale on current view, if supported."},
-        {.desc = "Debug"},
-        {"p",   "Palette dump screen, for triaging color issues."},
-        {"jJ",  "Debug background color test."},
-        {0}
-};
-/* Printed Nethack-guidebook style in --help, 
- * vim-cheatsheet style in help screen. */
-
-#define KB_SZ 3
-// Try a help screen sort of like the vim cheatsheets, for better spacial
-// awareness of key layout.
-void render_help() {
-        const char* const wasd_kb[KB_SZ] = {
-                "qQ wW eE rR tT yY uU iI oO pP [{ ]} \\|",
-                " aA sS dD fF gG hH jJ kK lL ;: '\"",
-                "  zZ xX cC vV bB nN mM ,< .> /?",
-        };
-
-        erase();
-        attr_set(A_NORMAL, -1, NULL);
-        
-        for (int y=0; y<KB_SZ; y++) mvprintw(y, 0, wasd_kb[y]);
-
-        unsigned pal = 2; // ghetto-palette in basic 16 colors
-        for (int i=0, y=KB_SZ+1; KEYS[i].desc; i++, y++) {
-                if (!KEYS[i].keys) {
-                        // group entry, do not advance palette
-                        y++; 
-                        mvprintw(y, 4, "%s:", KEYS[i].desc);
-                } else {
-                        for (const char* c=KEYS[i].keys; *c; c++) {
-                                for (int y=0; y<KB_SZ; y++) {
-                                        for (int x=0; wasd_kb[y][x]; x++) {
-                                                if (wasd_kb[y][x] == *c) {
-                                                        mvchgat(y, x, 1, A_NORMAL, pal, 0);
-                                                }
-                                        }
-                                }
-                        }
-                        mvaddstr(y, 0, KEYS[i].keys);
-                        mvaddstr(y, 8, KEYS[i].desc);
-                        mvchgat(y, 8, strlen(KEYS[i].desc), A_NORMAL, pal, 0);
-                        pal++;
-                }
-        }
-        
-        refresh();
-        getch();
 }
 
 const int default_ui_color = 6; // tryout this idea
@@ -446,13 +400,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                        "\n",
                        argv[0]
                        );
-                for (int i=0; KEYS[i].desc; i++) {
-                        if (!KEYS[i].keys) {
-                                printf("\n    %s:\n", KEYS[i].desc);
-                        } else { 
-                                printf("%s\t%s\n", KEYS[i].keys, KEYS[i].desc);
-                        }
-                }
+                cmd_print_help(KEYS);
                 printf("\n" "v%s on %s\n", blindsight_version, curses_version());
                 return EXIT_FAILURE;
         }

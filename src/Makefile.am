@@ -18,7 +18,8 @@ endif
 include_HEADERS = blindsight.h
 
 lib_LTLIBRARIES = libblindsight.la
-libblindsight_la_SOURCES = blindsight.c palette.c palette.h watcher.h
+libblindsight_la_SOURCES = blindsight.c palette.c cmd.c \
+						   palette.h cmd.h watcher.h
 libblindsight_la_LIBADD = -lncursesw -lm
 if HAVE_TCC
 if SYS_LINUX
