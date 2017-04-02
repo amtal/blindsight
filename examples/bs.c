@@ -8,7 +8,7 @@
 
 
 /* A histogram view shows symbol (byte) distribution inside an address window.
- * It's not very space-efficient to show, so we can try and summarize it.
+ * It's not very space-efficient to show, so there's a few ways to compress it:
  *
  * - Shannon entropy is a measure of the information represented by the
  *   particular symbol distribution in a given address window.
@@ -19,45 +19,53 @@
  * Neithers take symbol ordering into account, just their distribution in the
  * window. Shannon entropy is a little easier to display, so here it is.
  * */
-RF(ent) {
-        uint16_t count[256] = {0}; // histogram of symbol occurances
-        uint8_t classes = 0; // mask of bits seen, used to detect ascii
-
-        for (int i=0;i<buf_sz;i++) {
-                count[buf[i]]++;
-                classes |= buf[i];
-        }
-
+static inline double entropy(uint16_t count[256], size_t window) {
         /* We're always dealing with 256 symbols, since we work in bytes.
          * Windows are often smaller than that, though; worst-case compression
          * for a 128-byte window would be 7 bits, 16-byte window 4 bits, etc. 
          *
          * For such smaller windows, we'll re-scale the output to '8' bits to
-         * keep the shading range consistent while switching scales.
+         * keep the shading range looking consistent while switching scales.
          */
-        static double scale;
-        static double lut[512] = {0}; // memoize FP calc for small buf_sz
+        static double visual_scale;
+
+        /* Memoize FP calc for small windows */
+        static double lut[512] = {0};
         static size_t lut_for_sz = 0;
-        if (lut_for_sz != buf_sz && buf_sz <= sizeof(lut)/sizeof(lut[0])) {
-                lut_for_sz = buf_sz;
-                for (int i=1; i<buf_sz; i++) {
-                        double t = (double)i / buf_sz;
+        if (lut_for_sz != window && window <= sizeof(lut)/sizeof(lut[0])) {
+                lut_for_sz = window;
+                for (int i=1; i<window; i++) {
+                        double t = (double)i / window;
                         lut[i] = -t * log2(t);
                 }
-                scale = buf_sz >= 256 ? 1.0 : (8.0 / log2(buf_sz));
+                visual_scale = window >= 256 ? 1.0 : (8.0 / log2(window));
         }
 
         double entropy = 0.0;
-        if (buf_sz <= sizeof(lut)/sizeof(lut[0])) {
+        if (window <= sizeof(lut)/sizeof(lut[0])) { /* small windows */
                 for (int i=0;i<256;i++) entropy += lut[count[i]];
-                entropy *= scale;
+                entropy *= visual_scale;
         } else { /* unmemoized */
                 for (int i=0;i<256;i++) {
                         if (!count[i]) continue;
-                        double prob = (double)count[i] / buf_sz;
+                        double prob = (double)count[i] / window;
                         entropy += prob * log2(1 / prob);
                 }
         }
+        return entropy;
+}
+
+RF(ent) {
+        uint16_t count[256] = {0}; // histogram of symbol occurances
+        uint8_t classes = 0; // mask of bits seen, used to detect ascii
+        for (int i=0;i<buf_sz;i++) {
+                count[buf[i]]++;
+                classes |= buf[i];
+        }
+
+        double ent = entropy(count, buf_sz);
+        int hi = (int)floor(ent);
+        int lo = (int)(ent * 10) % 10;
 
         /* There's two approaches that seem to work:
          *
@@ -68,24 +76,23 @@ RF(ent) {
          * The latter is more cluttered, less intuitive, and depends on
          * ncursesw + fancy terminal. I'm keeping it for experimentation.
          * */
-        int hi = (int)floor(entropy);
-        int lo = (int)(entropy * 10) % 10;
+        int color = 0;
         if (count[0] == buf_sz) {
                 mvprintw(y, x, " "); // all 0s
-                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[3][0], NULL);
+                color = pal->fg_gray[3][0];
         } else if (count[255] == buf_sz) {
                 mvprintw(y, x, "#"); // all Fs
-                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[1][0], NULL);
+                color = pal->fg_gray[1][0];
         } else if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
                 //mvprintw(y, x, "a"); // ascii
                 mvprintw(y, x, "%01x", hi); // ascii
-                mvchgat(y, x, 1, A_NORMAL, pal->fg_gray[3][hi*3], NULL);
+                color = pal->fg_gray[3][hi*3];
         } else {
                 //mvprintw(y, x, "+"); // binary
                 mvprintw(y, x, "%01x", lo); // binary
-                int fg = entropy > 7.8 ? 5 : 4;
-                mvchgat(y, x, 2, A_NORMAL, pal->fg_gray[fg][hi*3], NULL);
+                color = pal->fg_gray[ent > 7.8 ? 5 : 4][hi*3];
         }
+        mvchgat(y, x, 1, A_NORMAL, color, NULL);
 }
 
 /* Grayscale byte occurance histogram, log-scaled to make low counts stand out.
