@@ -85,7 +85,7 @@ RF(ent) {
                 color = pal->fg_gray[1][0];
         } else if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
                 //mvprintw(y, x, "a"); // ascii
-                mvprintw(y, x, "%01x", hi); // ascii
+                mvprintw(y, x, "%01x", lo); // ascii
                 color = pal->fg_gray[3][hi*3];
         } else {
                 //mvprintw(y, x, "+"); // binary
@@ -94,6 +94,38 @@ RF(ent) {
         }
         mvchgat(y, x, 1, A_NORMAL, color, NULL);
 }
+
+/* Like above, but only with basic colors */
+RF(ent_simple) {
+        uint16_t count[256] = {0}; // histogram of symbol occurances
+        uint8_t classes = 0; // mask of bits seen, used to detect ascii
+        for (int i=0;i<buf_sz;i++) {
+                count[buf[i]]++;
+                classes |= buf[i];
+        }
+
+        double ent = entropy(count, buf_sz);
+        int hi = (int)floor(ent);
+        int lo = (int)(ent * 10) % 10;
+
+        int color = 0;
+        if (count[0] == buf_sz) {
+                mvprintw(y, x, " "); // all 0s
+                color = pal->fg_gray[3][0];
+        } else if (count[255] == buf_sz) {
+                mvprintw(y, x, "#"); // all Fs
+                color = pal->fg_gray[1][0];
+        } else {
+                mvprintw(y, x, "%01x", hi); // ascii
+                if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
+                        color = 3;
+                } else {
+                        color = 4;
+                }
+        }
+        mvchgat(y, x, 1, A_NORMAL, color, NULL);
+}
+
 
 /* Grayscale byte occurance histogram, log-scaled to make low counts stand out.
  * (The log scale/palette isn't tuned to adjusting buf_sz yet, and this view
@@ -238,6 +270,8 @@ const view default_views[] = {
         {1, 1, 32, render_ent, "entropy", 
                 .min_bytes=16, .max_bytes=256,
                 .needs = F_256C | F_WPAIRS},
+        {1, 1, 32, render_ent_simple, "entropy-simp", 
+                .min_bytes=16, .max_bytes=256},
         {9, 17, 1024, render_hist_square, "bytehist", 
                 .min_bytes=64, .max_bytes=4096,
                 .needs = F_256C | F_WPAIRS | F_UTF8},

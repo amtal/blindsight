@@ -3,12 +3,16 @@ build-aux/
 autom4te.cache/
 aclocal.m4
 Makefile.in
+config.h.in
 configure
+confdefs.h
 
 # Configuration stuff
+stamp-h1
 config.log
 config.status
 Makefile
+src/config.h
 
 # Libtool and build artefacts
 .deps/
@@ -16,3 +20,7 @@ libtool
 .libs
 .dirstamp
 libblindsight?la*
+
+# general dev stuff, may as well
+tags
+*.swp

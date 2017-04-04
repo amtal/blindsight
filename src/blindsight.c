@@ -9,20 +9,22 @@
 #include <fcntl.h>
 #include <locale.h>
 #include <math.h>
-#ifdef HAVE_NCURSESW_NCURSES_H
-# include <ncursesw/ncurses.h>
-#else
-# include <ncurses.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include "config.h"
+#ifdef HAVE_NCURSESW_NCURSES_H
+# include <ncursesw/ncurses.h>
+#else
+# include <ncurses.h>
+#endif
 #include "blindsight.h"
 #include "palette.h"
 #include "cmd.h"
 #include "watcher.h"
+#include "sandbox.h"
 //#include <stdint.h> 
 /* TODO: purge all non-unsigned with righteous flame, except those mandated by ncurses I guess >_>
       uh, maybe ignore ncurses and just use typedefs to mark separate coord spaces?  */
@@ -116,7 +118,12 @@ uint32_t dlog2(uint32_t v) { // working on 4+G files? use a GPU...
 }
 
 
-// FIXME should probably make this stdin-friendly
+/* At the end of this call is the first point where untrusted data is
+ * introduced into the program. The sandbox is thus initialized here; call
+ * should be pushed as far forward in the initialization process as possible.
+ *
+ * FIXME should probably make this stdin-friendly
+ */
 const char* mmap_buf(const char* fname, size_t* fsize) {
         int in_fd = open(fname, O_RDONLY);
         if (in_fd == -1) err(1, "open");
@@ -127,6 +134,8 @@ const char* mmap_buf(const char* fname, size_t* fsize) {
 
         const char* buf = mmap(0, in_sb.st_size, PROT_READ, MAP_PRIVATE, in_fd, 0);
         if (buf == MAP_FAILED) err(1, "mmap");
+
+        sandbox_init(); /* hope we're all done initializing */
 
         return buf;
 }
@@ -405,11 +414,6 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                 return EXIT_FAILURE;
         }
 
-        /* Going to keep the buffer as unsigned to make it clear it's data, not
-         * strings. int8_t would also do, but would encourage UB casts. */
-        size_t buf_sz;
-        const unsigned char* buf = (unsigned char*)mmap_buf(argv[1], &buf_sz); // TODO move to struct return from arg pass?
-
         pal pal = screen_init();
         check_features_and_warn(views, setlocale(LC_CTYPE, ""));
 
@@ -435,6 +439,11 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
         signed view_num = 0;
         for (const view* v=views; v->y; v++) {view_num++;}
         view v = views[view_ind]; // starting view
+
+        /* Going to keep the buffer as unsigned to make it clear it's data, not
+         * strings. int8_t would also do, but would encourage UB casts. */
+        size_t buf_sz;
+        const unsigned char* buf = (unsigned char*)mmap_buf(argv[1], &buf_sz); // TODO move to struct return from arg pass?
 
         /* Window layout: there's three major vertical panes all stuffed together as far left as possible. 
          *
