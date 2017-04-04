@@ -31,8 +31,8 @@ RF(dasm) {
 }
 
 const view views[] = {
-        {1, 9, 4, render_dw_ptr, "arm-ptr"},
-        {1, 5, 2, render_dasm, "dasm-thumb"},
+        {4, /*=>*/ {1, 9}, "arm-ptr", rf_dw_ptr},
+        {2, /*=>*/ {1, 5}, "dasm-thumb", rf_dasm},
         {0}, // last
 };
 

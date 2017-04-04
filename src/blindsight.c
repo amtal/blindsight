@@ -54,11 +54,11 @@ void check_features_and_warn(const view* views, const char* locale) {
         feature present = 0, needed =0;
 
         if (COLORS >= 256) present |= F_256C;
-        if (COLOR_PAIRS >= 0x7fff) present |= F_WPAIRS;
+        if (COLOR_PAIRS >= 0x7fff) present |= F_FG_GRAY|F_GRAY_GRAY;
         if (strstr(locale, "UTF-8")) present |= F_UTF8;
 
-        for (const view* v=views; v->y; v++) {
-                if (v->needs & ~present) {
+        for (const view* v=views; v->codom.y; v++) {
+                if (v->codom.bounds & ~present) {
                         if (!needed) {
                                 def_prog_mode();
                                 endwin(); // drop back to terminal briefly
@@ -67,11 +67,14 @@ void check_features_and_warn(const view* views, const char* locale) {
 
                         printf("\t%s\n", v->name);
                 }
-                needed |= v->needs;
+                needed |= v->codom.bounds;
         }
-        if (needed & F_256C) printf("Need 256+ colors. Set $TERM? Switch terminals?\n");
-        if (needed & F_WPAIRS) printf("Need more color pairs. Set $TERM? Link ncursesw, not ncurses?\n");
-        if (needed & F_UTF8) printf("Need UTF-8 support. Set $TERM? Check locale?\n");
+        if (needed & F_256C) 
+                printf("Need 256+ colors. Set $TERM? Switch terminals?\n");
+        if (needed & (F_FG_GRAY|F_GRAY_GRAY)) 
+                printf("Need more color pairs. Set $TERM? Link ncursesw, not ncurses?\n");
+        if (needed & F_UTF8) 
+                printf("Need UTF-8 support. Set $TERM? Check locale?\n");
         if (needed) {
                 printf("Running 'export TERM=xterm-256color' will probably fix everything!\n");
                 // Take that, neckbeards! ^^^ This is for all the time I wasted
@@ -162,7 +165,7 @@ viewport viewport_init(int grid_x, view v) {
         
         vp.max_y--; // make space for 1-tall address bar
 
-        vp.bytes_per_full_row = (vp.max_x - grid_x) / v.x * v.bytes;
+        vp.bytes_per_full_row = (vp.max_x - grid_x) / v.codom.x * v.dom;
         vp.bytes_per_full_row = 1 << dlog2(vp.bytes_per_full_row);
 
         return vp;
@@ -239,10 +242,10 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         case KEY_RESIZE: endwin(); clear();     break;
         /* WASD-style scrolling */
         case KEY_LEFT:
-        case 'a': req.scroll = -v.bytes;
+        case 'a': req.scroll = -v.dom;
                   break;
         case KEY_RIGHT:
-        case 'd': req.scroll = v.bytes;
+        case 'd': req.scroll = v.dom;
                   break;
         case KEY_UP:
         case 'w': req.scroll = -vp.bytes_per_full_row;
@@ -286,7 +289,7 @@ void render_info(view v, viewport vp, const pal* pal) {
         //attr_on(A_REVERSE, NULL); // eh, this looks poor
         mvprintw(vp.max_y - 0, vp.max_x - 62, " \"%s\" b/char:%.3g b/cell:0x%x b/page:0x%X ", 
                 // may need to compensate for top address line size, if later added V
-                v.name, (float)v.bytes / (v.x * v.y), v.bytes, vp.bytes_per_full_row*vp.max_y/v.y);
+                v.name, (float)v.dom / (v.codom.x * v.codom.y), v.dom, vp.bytes_per_full_row*vp.max_y/v.codom.y);
         //attr_off(A_REVERSE, NULL);
 
         // for reference: BZ's recent versions top out the default binary view at 10x12=120bpc
@@ -302,7 +305,7 @@ void render_scroll(size_t buf_sz, size_t cursor, view v, viewport vp) {
         // overview "scroll" address bar (not sure whether any address info will actually go there, yet)
         size_t bar_step = buf_sz / (vp.max_y + 1);
         for (int y=0; y<vp.max_y+1; y++) {
-                size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y / v.y; // close 'nuff
+                size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y / v.codom.y; // close 'nuff
                 size_t bar = bar_step * y;
                 size_t bar_end = bar + bar_step;
                 if ((cursor >= bar && cursor <= bar_end) ||
@@ -335,8 +338,8 @@ void render_grid(const int grid_x, const size_t buf_sz, const size_t cursor,
 
         const int addr_pad = 4; // 2-char scroll bar + ": "
 
-        assert(1 << dlog2(v.bytes) == v.bytes && "viewport calc assumes v.bytes is pow2");
-        const int x_width = vp.bytes_per_full_row * v.x / v.bytes; // ^
+        assert(1 << dlog2(v.dom) == v.dom && "viewport calc assumes v.dom is pow2");
+        const int x_width = vp.bytes_per_full_row * v.codom.x / v.dom; // ^
 
         char fmt[32]; // variable-width formatting tmpbuf
 
@@ -350,18 +353,18 @@ void render_grid(const int grid_x, const size_t buf_sz, const size_t cursor,
                 unsigned int addr_sz = dlog2(vp.bytes_per_full_row) / 8 + 1;
                 addr_sz *= 2; // printed in hex
                 addr_sz += 1; // add a space?
-                unsigned int skip = addr_sz / v.x; // # of columns addr shown
-                if (addr_sz % v.x) skip++; // ceil(^)
+                unsigned int skip = addr_sz / v.codom.x; // # of columns addr shown
+                if (addr_sz % v.codom.x) skip++; // ceil(^)
                 snprintf(fmt, sizeof(fmt), "%%0%dx ", addr_sz-1);
                 size_t addr = 0;
-                for (int x=grid_x; x<grid_x+x_width; x+=v.x * skip,
-                                addr+=v.bytes * skip) {
+                for (int x=grid_x; x<grid_x+x_width; x+=v.codom.x * skip,
+                                addr+=v.dom * skip) {
                         mvprintw(0, x, fmt, addr);
                         mvchgat(0,  x, addr_sz-1, A_NORMAL, default_ui_color, NULL);
                 }
         }
 
-        for (int y=1, row=0; y<vp.max_y+1; y+=v.y, row++) {
+        for (int y=1, row=0; y<vp.max_y+1; y+=v.codom.y, row++) {
                 const size_t dy = cursor + row * vp.bytes_per_full_row;
 
                 // detailed row address bar, start ghetto improve later
@@ -376,12 +379,12 @@ void render_grid(const int grid_x, const size_t buf_sz, const size_t cursor,
                 }
 
                 // content
-                for (int x=grid_x, col=0; x<grid_x+x_width; x+=v.x, col++) {
-                        const size_t dx = col * v.bytes;
-                        if (dy + dx + v.bytes <= buf_sz) {
-                                v.render(y, x, buf + dy + dx, v.bytes, pal);
+                for (int x=grid_x, col=0; x<grid_x+x_width; x+=v.codom.x, col++) {
+                        const size_t dx = col * v.dom;
+                        if (dy + dx + v.dom <= buf_sz) {
+                                v.render(buf + dy + dx, v.dom, y, x, pal);
                         } else {
-                                for (int i=0;i<v.x;i++) mvprintw(y, x + i, " ");
+                                for (int i=0;i<v.codom.x;i++) mvprintw(y, x + i, " ");
                         }
                 }
         }
@@ -437,7 +440,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
         size_t cursor = 0;
         signed view_ind = 0;  // index into view array, kept as int for easy rolling
         signed view_num = 0;
-        for (const view* v=views; v->y; v++) {view_num++;}
+        for (const view* v=views; v->codom.y; v++) {view_num++;}
         view v = views[view_ind]; // starting view
 
         /* Going to keep the buffer as unsigned to make it clear it's data, not
@@ -541,10 +544,10 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                         view_ind = MAX(0, view_ind);
                         view_ind = MIN(view_ind, view_num - 1);
                         v = views[view_ind];
-                } else if (req.zoom && v.min_bytes && v.max_bytes) {
-                        v.bytes = req.zoom < 0 ? v.bytes >> 1 : v.bytes << 1;
-                        v.bytes = MAX(v.min_bytes, v.bytes);
-                        v.bytes = MIN(v.bytes, v.max_bytes);
+                } else if (req.zoom && v.zoom.min && v.zoom.max) {
+                        v.dom = req.zoom < 0 ? v.dom >> 1 : v.dom << 1;
+                        v.dom = MAX(v.zoom.min, v.dom);
+                        v.dom = MIN(v.dom, v.zoom.max);
                 }
 
                 // re-calc viewport due to possible changes

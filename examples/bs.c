@@ -96,7 +96,7 @@ RF(ent) {
 }
 
 /* Like above, but only with basic colors */
-RF(ent_simple) {
+RF(ent_16c) {
         uint16_t count[256] = {0}; // histogram of symbol occurances
         uint8_t classes = 0; // mask of bits seen, used to detect ascii
         for (int i=0;i<buf_sz;i++) {
@@ -138,7 +138,7 @@ RF(ent_simple) {
  * Using unicode for square "pixels" allows almost 2x the density of an ASCII
  * representation, and better addressing of individual bytes. However, the
  * ASCII representation does leave room for extra class/occurance count info. */
-RF(hist_square) {
+RF(hist) {
         // grid
         attr_set(A_NORMAL, pal->gray[6], NULL); // make grid fade into background
         mvprintw(y, x+1, "0123456789abcdef");
@@ -175,7 +175,7 @@ RF(hist_square) {
  * non-sequential if there's more than one column. The spacing added to
  * indicate that might not be super-intuitive, hence this comment.
  * */
-RF(byte_pixels) {
+RF(pixels) {
         for (int col=0; col<(buf_sz/2); col++) {
                 mvaddwstr(y, x+col, L"\u2580");
                 const unsigned char top = buf[col];
@@ -245,6 +245,8 @@ RF(hexii) {
                 default:
                         fmt = "%02X";
                         arg = c;
+                        // Shade by high nibble, but make sure low values are
+                        // still visible.
                         clr = 0 + pal->gray[8 + (c >> 4)];
                 }
                 mvprintw(y, xi, fmt, arg);
@@ -264,27 +266,21 @@ RF(bits) {
         }
 }
 
-
 const view default_views[] = {
-/*      {y, x, bs, fn,         name},   */
-        {1, 1, 32, render_ent, "entropy", 
-                .min_bytes=16, .max_bytes=256,
-                .needs = F_256C | F_WPAIRS},
-        {1, 1, 32, render_ent_simple, "entropy-simp", 
-                .min_bytes=16, .max_bytes=256},
-        {9, 17, 1024, render_hist_square, "bytehist", 
-                .min_bytes=64, .max_bytes=4096,
-                .needs = F_256C | F_WPAIRS | F_UTF8},
-        {1, 65, 128, render_byte_pixels, "bytepix", // errors on narrow screens
-                .needs = F_256C | F_WPAIRS | F_UTF8},
-        {1, 9, 4, render_hexii, "HexII", .needs = F_256C},
-        {1, 3, 1, render_hexii, "HexII", .needs = F_256C},
-        {1, 59, 16, render_xxd, "xxd"},
-        {1, 8, 1, render_bits, "bits"},
-        {0}, // last
+        {32,   /*=>*/ {1, 1, F_256C|F_FG_GRAY}, 
+         "entropy", rf_ent, .zoom={16, 256}}, 
+        {32,   /*=>*/ {1, 1},
+         "entropy-simp", rf_ent_16c .zoom={16, 256}}, 
+        {1024, /*=>*/ {9, 17, F_256C|F_PIXELS}, 
+         "bytehist", rf_hist, .zoom={64, 4096}},
+        {128,  /*=>*/ {1, 65, F_256C|F_PIXELS},
+         "bytepix", rf_pixels}, // errors on narrow screens
+        {4, /*=>*/ {1, 9, F_256C}, "HexII", rf_hexii}, 
+        {1, /*=>*/ {1, 3, F_256C}, "HexII", rf_hexii},
+        {16,/*=>*/ {1, 59}, "xxd", rf_xxd, },
+        {1, /*=>*/ {1, 8}, "bits", rf_bits, },
+        {0},
 };
-
-
 
 int main(const int argc, char** argv) {
         return blindsight(argc, argv, default_views, "default_views");
