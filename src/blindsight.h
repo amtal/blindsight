@@ -83,6 +83,7 @@ typedef struct {
                                   int y, int x, const pal* pal)
 
 /* Main executable 
+ *
  * argc, argv:  passthrough from main
  * views:       selection of view structs that will be rendered
  * reload_sym:  name of the symbol defining the previous argument

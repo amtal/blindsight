@@ -129,7 +129,7 @@ AC_ARG_ENABLE([sandbox],
   case "${enableval}" in
    yes)   sandbox=yes ;;
    no)    sandbox=no ;; 
-   *) AC_MSG_ERROR([bad value ${enableval} for --enable-debug]) ;;
+   *) AC_MSG_ERROR([bad value ${enableval} for --enable-sandbox]) ;;
   esac
 
 ], [sandbox=yes])

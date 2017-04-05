@@ -35,6 +35,10 @@ void sandbox_init() {
         scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
         if (!ctx) errx(1, "seccomp_init failed!");
 
+        if (seccomp_arch_add(ctx, seccomp_arch_native())) {
+                err(1, "seccomp_arch_add failed, ");
+        }
+
         int sc = 0; /* error accumulator */
 
         /* normal I/O */
@@ -70,6 +74,8 @@ void sandbox_init() {
         sc |= ALLOW(ctx, SCMP_SYS(mmap)); // adding for portability?
         sc |= ALLOW(ctx, SCMP_SYS(_llseek));
         sc |= ALLOW(ctx, SCMP_SYS(mprotect)); // yeahhhh...
+        /* it's tempting to disable this w/o TCC, but then I see a state
+         * explosion on testing on the horizon... */
 
         if (sc) errx(128+sc, "seccomp rule addition failed");
         if (seccomp_load(ctx)) errx(1, "seccomp_load");
