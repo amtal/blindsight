@@ -34,6 +34,8 @@ its [variations] as examples.
 
 # Installing
 
+[![Travis](https://img.shields.io/travis/amtal/blindsight.svg)](https://travis-ci.org/amtal/blindsight) [![Codacy grade](https://img.shields.io/codacy/grade/e8b2d157ee3448f4ac050e586aa085c4.svg)](https://www.codacy.com/app/amtal/blindsight/dashboard) [![license](https://img.shields.io/github/license/amtal/blindsight.svg)](LICENSE)
+
 Mandatory: `ncursesw`, `autotools`, C build environment, Tiny C Compiler.
 Optional: `libtcc.so` on Linux.
 

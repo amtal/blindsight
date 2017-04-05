@@ -11,7 +11,7 @@ dnl
 dnl Without it, this could literally be a single C file you wget and tcc -run.
 dnl
 dnl Serious second thoughts about going down the path at all.
-AC_INIT([blindsight],[0.0.5],[amtal@github])
+AC_INIT([blindsight],[0.1.0],[amtal@github])
 
 dnl ################################
 dnl Automake dependencies and config
@@ -19,7 +19,7 @@ dnl ################################
 
 dnl Reduce the amount of clutter in project rootdir.
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_MACRO_DIRS([build-aux]) # complains about not being named m4??
+AC_CONFIG_MACRO_DIRS([build-aux]) # automake 1.11 doesn't have this??
 
 dnl The 'foreign' option avoids extra Gnu complaints.
 AM_INIT_AUTOMAKE([1.9 -Wall -Werror foreign subdir-objects])
@@ -45,6 +45,10 @@ dnl #################################
 
 AC_CONFIG_HEADERS([src/config.h]) # avoid -D clutter in build log
 
+AC_SEARCH_LIBS([log2], [m], , [
+    AC_MSG_ERROR([Need -lm mathlib.])
+])
+
 AC_CHECK_FUNCS([err errx], [], [AC_MSG_ERROR([Missing BSD convenience wrapper.])])
 
 dnl There's a pile of other linuxy stuff I don't think is portable, but eh, later.
@@ -54,7 +58,6 @@ dnl nice to have some output on build that indicates a dependency, but means
 dnl there's a pile of extra -DHAVE_WHATEVER passed around and this configure.ac
 dnl is longer than necessary.
 AC_CHECK_HEADERS([limits.h])
-AC_CHECK_HEADER_STDBOOL
 AC_TYPE_SIZE_T
 AC_FUNC_MMAP
 
@@ -62,7 +65,7 @@ dnl Pin to at-least ncurses versions I've tested, for now.
 PKG_CHECK_MODULES([NCURSESW], [ncursesw >= 5.9], [], [
     AC_MSG_WARN([Untested version of ncursesw.])
 ]) 
-AC_SEARCH_LIBS([mvaddwstr], [ncursesw], , [
+AC_SEARCH_LIBS([mvaddwstr], [ncursesw ncurses], , [ # on osx libncurses is wide
     AC_MSG_ERROR([Need ncursesw, for wide char and color pair support.])
 ])
 AC_CHECK_HEADERS([ncursesw/ncurses.h]) # Ubuntu layout, needs ifdef

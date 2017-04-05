@@ -35,10 +35,6 @@ void sandbox_init() {
         scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_KILL);
         if (!ctx) errx(1, "seccomp_init failed!");
 
-        if (seccomp_arch_add(ctx, seccomp_arch_native())) {
-                err(1, "seccomp_arch_add failed, ");
-        }
-
         int sc = 0; /* error accumulator */
 
         /* normal I/O */

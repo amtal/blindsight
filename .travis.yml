@@ -1,8 +1,43 @@
+# It's slightly tempting to automate testing of TCC reload working, sandbox not
+# faulting, doing a matrix across the two features...
+# 
+# The starting point, though, is validating that the autotools pain was at all
+# worth it. Does the base library build? Good.
+#
+# The optional features might flow down from Arch/Gentoo's nice build
+# environments in the future.
 language: c
+
+os: linux
+env: NOTE="Ubuntu trusty, close enough to Arch to build reliably"
+dist: trusty
+sudo: false # going to try the fancy Beta stuff
+addons:
+  apt:
+    packages: # tcc/seccomp don't seem to be in the whitelist, oh well!
+      - libncursesw5-dev
+
+matrix:
+  allow_failures:
+    - os: osx
+    - dist: precise
+  include:
+    - os: linux
+      env: NOTE="Ubuntu precise, old automake incapable of clean builds"
+      dist: precise 
+      sudo: required
+      before_install:
+        - sudo apt-get update -qq # automake... I'm dependant on at least 1.13? Yuck.
+        - automake --version      # AC_CONFIG_MACRO_DIRS is showstopper, probably others too.
+        - sudo apt-get install -qq libncursesw5-dev libseccomp-dev libtcc-dev tcc
+    - os: osx # amazingly this works
+      env: NOTE="Only OSX build I'll ever test"
+      before_install:
+        - brew install ncurses  # built with --enable-widec
+                                # symlinked ncursesw/ncurses.h 
+                                # libncurses.dylib
+
 compiler: gcc
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq libncursesw5-dev libseccomp-dev libtcc-dev tcc
 script:
   - ./bootstrap 
   - ./configure 
