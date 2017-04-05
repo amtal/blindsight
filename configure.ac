@@ -19,7 +19,13 @@ dnl ################################
 
 dnl Reduce the amount of clutter in project rootdir.
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_MACRO_DIRS([build-aux]) # automake 1.11 doesn't have this??
+dnl ^^ automake 1.11 doesn't have this? It's an autoconf macro, though.
+dnl The build-aux directory isn't created if it's missing, either. Not sure 
+dnl whether that's a new feature or just due to the macro being missing.
+dnl
+dnl Workaround: `make dist` on recent system and distribute to older ones, as
+dnl the build system was intended to do.
+AC_CONFIG_MACRO_DIRS([build-aux]) 
 
 dnl The 'foreign' option avoids extra Gnu complaints.
 AM_INIT_AUTOMAKE([1.9 -Wall -Werror foreign subdir-objects])
