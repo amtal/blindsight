@@ -51,6 +51,7 @@ void sandbox_init() {
         /* iconv funtimes */
         sc |= ALLOW(ctx, SCMP_SYS(open)); // O_RDONLY|O_CLOEXEC, but needed for TCC anyway
         sc |= ALLOW(ctx, SCMP_SYS(fstat64)); // on the above?
+        sc |= ALLOW(ctx, SCMP_SYS(fstat));
         sc |= ALLOW(ctx, SCMP_SYS(close));
 
         /* memory management; my code is malloc-clean - dependencies aren't */

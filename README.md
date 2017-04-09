@@ -75,8 +75,8 @@ RF(xxd) {
 }
 
 const view views[] = {
-/*      {y, x,  bs, fn,         name},   */
-        {1, 59, 16, render_xxd, "xxd"},
+/*       bytes       y, x    name   func   */
+        {16, /*=>*/ {1, 59}, "xxd", rf_xxd},
         {0}, // last
 };
 

@@ -1,5 +1,7 @@
 AM_CCFLAGS = -Wall -O3
 
+## Linking clang/gcc code from TCC has some special requirements.
+if HAVE_TCC_BINARY
 ## TCC doesn't do stack alignment, and I've been returning laaarge structs on
 ## it. Calling into clang faults on movapd due to non-16byte aligned SP.
 ##
@@ -9,9 +11,6 @@ AM_CCFLAGS = -Wall -O3
 ##
 ## Can't use TCC as compiler for everything because its linker doesn't handle
 ## autotools default arguments.
-## 
-## So, we're limited to building library with GCC for now.
-if HAVE_TCC
 AM_CCFLAGS += -mpreferred-stack-boundary=2
 ##AM_CCFLAGS += -mstackrealign -mstack-alignment=4
 endif

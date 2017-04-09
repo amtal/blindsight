@@ -87,6 +87,7 @@ dnl Do an initial basic check for compiler binary, then a bunch of extra checks.
 dnl Once all checks done, create the conditional that will be used to tweak
 dnl generated Makefile.
 AC_CHECK_PROG([tcc],[tcc],[yes],[no])
+AM_CONDITIONAL([HAVE_TCC_BINARY], [test "x$tcc" = xyes])
 AC_CHECK_HEADERS([libtcc.h], , [tcc=no])
 
 dnl libtcc depends on libdl, SEARCH_LIBS check will fail if it's not added. Could
