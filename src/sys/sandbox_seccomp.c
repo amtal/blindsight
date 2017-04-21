@@ -58,6 +58,7 @@ void sandbox_init() {
         sc |= ALLOW(ctx, SCMP_SYS(brk)); 
 
         sc |= ALLOW(ctx, SCMP_SYS(sigreturn)); // from SIGWINCH
+        sc |= ALLOW(ctx, SCMP_SYS(rt_sigreturn));
 
         /* clean exit */
         sc |= ALLOW(ctx, SCMP_SYS(ioctl)); // SNDCTL_TMR_STOP or TCSETSW??
