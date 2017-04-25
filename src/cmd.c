@@ -6,11 +6,7 @@
 #endif
 #include <stdio.h>
 #include <string.h>
-
-typedef struct {
-        const char* keys; // optional
-        const char* desc; // mandatory until last entry
-} cmd;
+#include "cmd.h"
 
 /* Printed Nethack-guidebook style in --help, 
  * vim-cheatsheet style in help screen. */

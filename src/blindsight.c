@@ -22,6 +22,7 @@
 #endif
 #include "blindsight.h"
 #include "palette.h"
+#include "render.h"
 #include "cmd.h"
 #include "watcher.h"
 #include "sandbox.h"
@@ -105,22 +106,6 @@ pal screen_init() {
 #define MIN(a, b) ((a)>(b) ? (b) : (a))
 #define MAX(a, b) ((a)>(b) ? (a) : (b))
 
-static const char log256[256] = {
-#define LT(n) n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n
-        -1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
-        LT(4), LT(5), LT(5), LT(6), LT(6), LT(6), LT(6),
-        LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7), LT(7)
-}; // Bit Twiddling Hacks, by Sean Eron Anderson
-uint32_t dlog2(uint32_t v) { // working on 4+G files? use a GPU...
-        register uint32_t t, tt;
-        if ((tt = v >> 16)) {
-                return (t = tt >> 8) ? 24 + log256[t] : 16 + log256[tt];
-        } else {
-                return (t = v >> 8) ? 8 + log256[t] : log256[v];
-        }
-}
-
-
 /* At the end of this call is the first point where untrusted data is
  * introduced into the program. The sandbox is thus initialized here; call
  * should be pushed as far forward in the initialization process as possible.
@@ -163,7 +148,8 @@ viewport viewport_init(int grid_x, view v) {
         getmaxyx(stdscr, vp.max_y, vp.max_x); 
         // this is a macro, args are written to :|
         
-        vp.max_y--; // make space for 1-tall address bar
+        vp.max_y--; // compensate for cursor dead space at the bottom of window
+                    // am I not initializing things correctly or something?
 
         vp.bytes_per_full_row = (vp.max_x - grid_x) / v.codom.x * v.dom;
         vp.bytes_per_full_row = 1 << dlog2(vp.bytes_per_full_row);
@@ -279,26 +265,6 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         return req;
 }
 
-const int default_ui_color = 6; // keep in basic colors, so it *always* works
-
-void render_info(view v, viewport vp) {
-        attr_set(A_REVERSE, default_ui_color, NULL);
-        // TODO only have one piece of UI so far; make it pretty with colours, put units into background
-        mvprintw(vp.max_y - 0, vp.max_x - 62, " \"%s\" b/char:%.3g b/cell:0x%x b/page:0x%X ", 
-                // may need to compensate for top address line size, if later added V
-                v.name, 
-                (float)v.dom / (v.codom.x * v.codom.y), 
-                v.dom, 
-                vp.bytes_per_full_row*vp.max_y/v.codom.y);
-        /* For reference: BZ's recent versions top out the default binary view
-         * at 10*12 pixels = 120 bytes/hex-char, or 960 bits/hex-char. A single
-         * terminal character can carry up to ~8 bits of information in glyphs,
-         * and ~8 more in clever fg+bg palette use... 
-         * However, BZ spends most screen estate on a classic hex+ascii dump,
-         * so with an order of magnitude or so entropy+class display we can
-         * still summarize files effectively. */
-}
-
 void render_scrollbar(size_t buf_sz, size_t cursor, view v, viewport vp) {
         attr_set(A_NORMAL, -1, NULL);
 
@@ -332,95 +298,22 @@ void render_scrollbar(size_t buf_sz, size_t cursor, view v, viewport vp) {
         }
 }
 
-/* Column width in bytes is a power of 2; rendering offsets into it
- * requires numbers lower than it. In many cases view.x is going to be
- * smaller than this, so we can't render an address for each column. In
- * such cases, we'll render an address every nth column, but the
- * addresses will not be truncated in any way. */
-void render_column_addrs(const int x_base, const int x_width, size_t bytes_per_row, view v) {
-        unsigned int addr_sz = dlog2(bytes_per_row) / 8 + 1;
-        addr_sz *= 2; // printed in hex
-        addr_sz += 1; // add a space?
-        unsigned int skip = addr_sz / v.codom.x; // # of columns addr shown
-        if (addr_sz % v.codom.x) skip++; // ceil(^)
-
-        char fmt[32];
-        snprintf(fmt, sizeof(fmt), "%%0%dx ", addr_sz-1);
-
-        size_t addr = 0;
-        for (int x=x_base; x < x_base + x_width; 
-                        x+=v.codom.x * skip, addr+=v.dom * skip) {
-                mvprintw(0, x, fmt, addr);
-                mvchgat(0,  x, addr_sz-1, A_NORMAL, default_ui_color, NULL);
-        }
-}
-
-/* Things being considered:
- *
- * - More views side by side, like hex+ascii or entropy + hexdump. Trick is,
- *   they have to have the same number of bytes/row.
- * - Trying to annotate character classes on address bar.
- * - Generalize column bar as a view while at it.
- *
- *   first address line, capitals are highlighted as a scroll bar for B
- *   V       /- 2nd address line, showing subset of 1st
- *
- *   a eeeee B hhhh jjjjjj <- 3rd view, same bytes/row as h
- *   A eeeee B hhhh jjjjjj
- *   A eeeee B hhhh jjjjjj
- * s A eeeee B hhhh jjjjjj
- * S a eeeee B hhhh jjjjjj
- * s a eeeee B hhhh jjjjjj
- *   a eeeee B hhhh jjjjjj
- *
- * ^ scroll bar
- */
-void render_grid(const int grid_x, const size_t buf_sz, const size_t cursor, 
-                const unsigned char* const buf, view v, viewport vp, const pal* pal) {
-        //attr_set(A_NORMAL, pal->gray[16], NULL);
-
-        const int addr_pad = 4; // 2-char scroll bar + ": "
-
-        assert(1 << dlog2(v.dom) == v.dom && "viewport calc assumes v.dom is pow2");
-        const int x_width = vp.bytes_per_full_row * v.codom.x / v.dom; // ^
-
-
-        render_column_addrs(grid_x, x_width, vp.bytes_per_full_row, v);
-
-        for (int y=1, row=0; y<vp.max_y+1; y+=v.codom.y, row++) {
-                const size_t dy = cursor + row * vp.bytes_per_full_row;
-
-                // detailed row address bar, start ghetto improve later
-                if (dy < buf_sz) {
-                        char fmt[32];
-                        snprintf(fmt, sizeof(fmt), 
-                                 y == 1 ? "[%%0%dx]" : " %%%dx:", 
-                                 grid_x - addr_pad); 
-                        // \xe2\x94\x83 <- vertical line
-                        // don't print redundant 0s, as per HexII
-                        mvprintw(y, 1, fmt, cursor + row * vp.bytes_per_full_row);
-                        mvchgat(y,  1, grid_x - addr_pad + 2, A_NORMAL, default_ui_color, NULL);
-                }
-
-                // content
-                for (int x=grid_x, col=0; x<grid_x+x_width; x+=v.codom.x, col++) {
-                        const size_t dx = col * v.dom;
-                        if (dy + dx + v.dom <= buf_sz) {
-                                v.render(buf + dy + dx, v.dom, y, x, pal);
-                        } else {
-                                for (int i=0;i<v.codom.x;i++) mvaddch(y, x + i, ' ');
-                        }
-                }
-        }
-        /* Detailed address bar: the cursor is special, but is at the top of
-         * the screen. Highlight it a little so it stands out. */
-        mvchgat(1, 1, 1,        A_NORMAL, 14, NULL); // '['
-        mvchgat(1, grid_x-2, 1, A_NORMAL, 14, NULL); // ']'
-
-        /* cell between address bars is kinda empty-looking, not sure what to
-         * put there; I tried the name, but it looked out of place/didn't have
-         * enough room for long ones. */
-        //mvaddnstr(0, 2, v.name, grid_x - addr_pad); 
+void render_info(const vec2 base, const view v, const viewport vp) {
+        attr_set(A_REVERSE, default_ui_color, NULL);
+        // TODO only have one piece of UI so far; make it pretty with colours, put units into background
+        mvprintw(base.y, base.x, " \"%s\" b/char:%.3g b/cell:0x%x b/page:0x%X ", 
+                // may need to compensate for top address line size, if later added V
+                v.name, 
+                (float)v.dom / (v.codom.x * v.codom.y), 
+                v.dom, 
+                vp.bytes_per_full_row*vp.max_y/v.codom.y);
+        /* For reference: BZ's recent versions top out the default binary view
+         * at 10*12 pixels = 120 bytes/hex-char, or 960 bits/hex-char. A single
+         * terminal character can carry up to ~8 bits of information in glyphs,
+         * and ~8 more in clever fg+bg palette use... 
+         * However, BZ spends most screen estate on a classic hex+ascii dump,
+         * so with an order of magnitude or so entropy+class display we can
+         * still summarize files effectively. */
 }
 
 int blindsight(const int argc, char** argv, const view* views, const char* reload_sym) {
@@ -531,10 +424,20 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
 
                 /* Writing view render functions is easier if you don't have to
                  * fill 100% of the declared codomain area. Clear on redraw. */
+                const int addr_pad = 4; // 2-char scroll bar + ": "
+                assert(1 << dlog2(v.dom) == v.dom && "viewport calc assumes v.dom is pow2");
+                const int x_width = vp.bytes_per_full_row * v.codom.x / v.dom; // ^
+
                 erase(); 
                 render_scrollbar(buf_sz, cursor, v, vp);
-                render_grid(grid_x, buf_sz, cursor, buf, v, vp, &pal);
-                render_info(v, vp);
+                render_row_addrs(yx(1, 1), yx(vp.max_y+1, grid_x - addr_pad), 
+                                buf_sz, cursor, v, vp.bytes_per_full_row);
+                render_col_addrs(yx(0, grid_x), x_width, 
+                                vp.bytes_per_full_row, v);
+                render_grid(yx(1, grid_x), yx(vp.max_y+1, x_width), 
+                                buf_sz, cursor, buf, v, 
+                                vp.bytes_per_full_row, &pal);
+                render_info(yx(vp.max_y - 0, vp.max_x - 62), v, vp);
                 refresh();
         } while ((key_press = key_poll(&trigger_reload)) != 'x');
 

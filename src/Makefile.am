@@ -18,8 +18,10 @@ endif
 include_HEADERS = blindsight.h
 
 lib_LTLIBRARIES = libblindsight.la
-libblindsight_la_SOURCES = blindsight.c palette.c cmd.c \
-						   palette.h cmd.h watcher.h sandbox.h
+libblindsight_la_SOURCES = blindsight.c \
+						   palette.c cmd.c render.c \
+						   palette.h cmd.h render.h \
+						   watcher.h sandbox.h
 libblindsight_la_LIBADD = 
 
 if HAVE_TCC
