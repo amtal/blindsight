@@ -108,7 +108,7 @@ pal palette_init() {
         /* technically unused, since V afaik doesn't work?
          * or at least .Xresources takes precedence */
         assert(can_change_color()); 
-        color_content(COLOR_BLACK, 0, 0, 0); // I see a background and I wanted it painted black
+        //color_content(COLOR_BLACK, 0, 0, 0);
         //bkgdset(COLOR_PAIR(255 + 8*26) | '#');
         return pal;
 }

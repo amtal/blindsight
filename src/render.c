@@ -53,7 +53,7 @@ void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz, const size_t cur
         for (int y=base.y, row=0; y<dim.y && dy<buf_sz; y+=v.codom.y, row++, dy+=bytes_per_row) {
                 char fmt[32];
                 snprintf(fmt, sizeof(fmt),
-                         y == 1 ? "[%%0%dx]" : " %%%dx:", 
+                         y == 1 ? "@%%0%dx " : " %%%dx ", 
                          dim.x); 
                 // \xe2\x94\x83 <- vertical line
                 // don't print redundant 0s, as per HexII
@@ -62,8 +62,7 @@ void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz, const size_t cur
         }
         /* Detailed address bar: the cursor is special, but is at the top of
          * the screen. Highlight it a little so it stands out. */
-        mvchgat(base.y, base.y, 1, A_NORMAL, 14, NULL); // '['
-        mvchgat(base.y, base.y + dim.y, 1, A_NORMAL, 14, NULL); // ']'
+        mvchgat(base.y, base.y, 1, A_NORMAL, 15, NULL); // '@'
 
         /* cell between address bars is kinda empty-looking, not sure what to
          * put there; I tried the name, but it looked out of place/didn't have
