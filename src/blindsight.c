@@ -139,7 +139,7 @@ typedef struct {
         size_t bytes_per_full_row; // grid window rows
 } viewport;
 
-viewport viewport_init(int grid_x, view v) {
+viewport viewport_init(int non_grid_x, view v) {
         // Trying a thing where instead of declaring inputs/outputs by
         // reference as const, they're passed returned by value. This makes
         // effects 100% clear without relying on warnings or looking up decls.
@@ -151,7 +151,7 @@ viewport viewport_init(int grid_x, view v) {
         vp.max_y--; // compensate for cursor dead space at the bottom of window
                     // am I not initializing things correctly or something?
 
-        vp.bytes_per_full_row = (vp.max_x - grid_x) / v.codom.x * v.dom;
+        vp.bytes_per_full_row = (vp.max_x - non_grid_x) / v.codom.x * v.dom;
         vp.bytes_per_full_row = 1 << dlog2(vp.bytes_per_full_row);
 
         return vp;
@@ -265,12 +265,12 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
         return req;
 }
 
-void render_scrollbar(size_t buf_sz, size_t cursor, view v, viewport vp) {
-        attr_set(A_NORMAL, -1, NULL);
-
+// TODO: generalize in terms of dims, drop viewport dependency, move into render.c
+void render_scrollbar(const vec2 base, size_t buf_sz, size_t cursor, view v, viewport vp, const pal* pal) {
         // overview "scroll" address bar (not sure whether any address info will actually go there, yet)
-        size_t bar_step = buf_sz / (vp.max_y + 1);
-        for (int y=0; y<vp.max_y+1; y++) {
+        size_t bar_step = buf_sz / (vp.max_y + 1 - base.y);
+        int bot_arrow = 0;
+        for (int y=base.y; y<vp.max_y+1; y++) {
                 size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y / v.codom.y; // close 'nuff
                 size_t bar = bar_step * y;
                 size_t bar_end = bar + bar_step;
@@ -278,9 +278,15 @@ void render_scrollbar(size_t buf_sz, size_t cursor, view v, viewport vp) {
                     (cur_end >= bar && cur_end <= bar_end)) { // segments overlap
                         size_t overlap_lo = MAX(cursor, bar);
                         size_t overlap_hi = MIN(cur_end, bar_end);
-                        mvprintw(y, 0, "%01x", (uint8_t)((double)(overlap_hi - overlap_lo) / bar_step * 15));
+                        uint8_t overlap = (uint8_t)((double)(overlap_hi - overlap_lo) / bar_step * 20);
+                        /* Currently requires 256-color palette. Just inverting
+                         * common UI color doesn't look quite as good as fading
+                         * in % of bar accessed. Hmm. */
+                        mvaddch(y, base.x, bot_arrow++ ? 'V' : 'A'); // arrow selection isn't perfect FIXME
+                        mvchgat(y, base.x, 1, A_NORMAL, pal->gray[1 + overlap], NULL);
                 } else if (cursor < bar && cur_end > bar_end) { // viewport covers bar step
-                        mvprintw(y, 0, "f");
+                        mvaddch(y, base.x, '#');
+                        mvchgat(y, base.x, 1, A_NORMAL, pal->gray[21], NULL);
                 } else {
                         /* State of the unicodes:
                          *
@@ -289,12 +295,11 @@ void render_scrollbar(size_t buf_sz, size_t cursor, view v, viewport vp) {
                          * ACS_foo aren't properly configured in terminfo on my system, :doot:
                          */
                         //mvprintw(y, 0, " %c ", y==0 ? ACS_UARROW : (y==max_y-0) ? ACS_DARROW  : ACS_VLINE);
-                        mvaddstr(y, 0, " ");//L"\x2551 ");  // mvaddwstr for unicode char
+                        //mvaddstr(y, 0, " ");//L"\x2551 ");  // mvaddwstr for unicode char
                         //mvprintw(y, 0, " \xe2\x9c\x93 ");
                         //mvprintw(y, 0, "\xe2\x96\x80\xe2\x96\x84\xe2\x96\x81"); // upper lower upper
-                        
+                        mvchgat(y, base.x, 1, A_NORMAL, pal->gray[0], NULL);
                 }
-                mvchgat(y, 0, 1, A_NORMAL, 0, NULL);
         }
 }
 
@@ -372,11 +377,11 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
          * - A variable-width address bar, followed by
          * - A mostly fixed-width fancy 'hexdump'.
          *
-         * grid_x is the screen x-offset for the 'hexdump' grid.
+         * addr_width plus some spacing is the screen x-offset for the
+         * 'hexdump' grid.
          */
-        int grid_x = (dlog2(buf_sz) + 1) / 8 + 1;  // bytes needed to store address
-        grid_x = 2 + (grid_x * 2 + 1); // 2-wide scrollbar + hex address + ' '
-        viewport vp = viewport_init(grid_x, v);
+        int addr_width = (dlog2(buf_sz) + 1) / 4 + 1;  // nibbles in max address
+        viewport vp = viewport_init(addr_width + 2, v);
 
         int key_press = 0;
         do { // main loop
@@ -420,23 +425,26 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                         v.dom = MIN(v.dom, v.zoom.max);
                 }
 
-                vp = viewport_init(grid_x, v); // possible view changes,re-calc
+                vp = viewport_init(addr_width + 2, v); // possible view changes,re-calc
 
-                /* Writing view render functions is easier if you don't have to
-                 * fill 100% of the declared codomain area. Clear on redraw. */
-                const int addr_pad = 4; // 2-char scroll bar + ": "
                 assert(1 << dlog2(v.dom) == v.dom && "viewport calc assumes v.dom is pow2");
                 const int x_width = vp.bytes_per_full_row * v.codom.x / v.dom; // ^
 
+                /* Writing view render functions is easier if you don't have to
+                 * fill 100% of the declared codomain area. Clear on redraw. */
+                attr_set(A_NORMAL, -1, NULL);
                 erase(); 
-                render_scrollbar(buf_sz, cursor, v, vp);
-                render_row_addrs(yx(1, 1), yx(vp.max_y+1, grid_x - addr_pad), 
+                // Minimal address bar, separated from main grid by a scrol bar.
+                render_scrollbar(yx(1, 0), buf_sz, cursor, v, vp, &pal);
+                render_row_addrs(yx(1, 0), yx(vp.max_y + 1, addr_width + 2), 
                                 buf_sz, cursor, v, vp.bytes_per_full_row);
-                render_col_addrs(yx(0, grid_x), x_width, 
+                // Column addresses aligned with main grid.
+                render_col_addrs(yx(0, addr_width + 2), x_width, 
                                 vp.bytes_per_full_row, v);
-                render_grid(yx(1, grid_x), yx(vp.max_y+1, x_width), 
+                render_grid(yx(1, addr_width + 2), yx(vp.max_y+1, x_width), 
                                 buf_sz, cursor, buf, v, 
                                 vp.bytes_per_full_row, &pal);
+                // View-info window somewhere out of the way.
                 render_info(yx(vp.max_y - 0, vp.max_x - 62), v, vp);
                 refresh();
         } while ((key_press = key_poll(&trigger_reload)) != 'x');

@@ -48,13 +48,15 @@ sudo make install
 
 # Using
 
-Run some examples (like `./examples/bs.c`) which are all C files executable via
-the Tiny C Compiler. 
+Run some examples (like [examples/bs.c](examples/bs.c#L270)) which are all C
+scripts executable via the Tiny C Compiler's `-run` option. 
 
 ![Live code reload demonstration](https://i.imgur.com/9Ez24v5.gif)
 
-You can write your own, copy-pasting liberally from examples. Saved code will
-be re-loaded by running instances on supported platforms.
+You can write your own views that make use of C libraries, such as the
+Capstone-based disassembly view in [examples/dasm.c](examples/dasm.c).
+Copy-paste liberally from other examples. For fast iteration, saved code will
+be automatically re-loaded by running hex viewers on supported platforms. 
 
 
 ```c

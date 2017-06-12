@@ -47,27 +47,30 @@ void render_col_addrs(vec2 base, const int dim_x, size_t bytes_per_row, view v) 
         }
 }
 
-void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz, const size_t cursor, view v, size_t bytes_per_row) {
+void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz, 
+                        const size_t cursor, view v, size_t bytes_per_row) {
+        // Don't print redundant 0s, as per HexII.
+        char fmt[32];
+        snprintf(fmt, sizeof(fmt), "%%%dx", dim.x - 2); // do not count spaces
         size_t dy = cursor;
         // Do not print addrs beyond buffer: v
-        for (int y=base.y, row=0; y<dim.y && dy<buf_sz; y+=v.codom.y, row++, dy+=bytes_per_row) {
-                char fmt[32];
-                snprintf(fmt, sizeof(fmt),
-                         y == 1 ? "@%%0%dx " : " %%%dx ", 
-                         dim.x); 
+        for (int y=base.y, row=0; y<dim.y && dy<buf_sz; 
+                        y+=v.codom.y, row++, dy+=bytes_per_row) {
                 // \xe2\x94\x83 <- vertical line
-                // don't print redundant 0s, as per HexII
-                mvprintw(y, base.x, fmt, dy);
-                mvchgat(y, base.x, dim.x, A_NORMAL, default_ui_color, NULL);
+                mvprintw(y, base.x + 1, fmt, dy);
+                mvchgat(y, base.x + 1, dim.x - 2, A_NORMAL, default_ui_color, NULL);
         }
         /* Detailed address bar: the cursor is special, but is at the top of
-         * the screen. Highlight it a little so it stands out. */
-        mvchgat(base.y, base.y, 1, A_NORMAL, 15, NULL); // '@'
-
-        /* cell between address bars is kinda empty-looking, not sure what to
-         * put there; I tried the name, but it looked out of place/didn't have
-         * enough room for long ones. */
-        //mvaddnstr(0, 2, v.name, grid_x - addr_pad); 
+         * the screen. Highlight it a little so it stands out. Use rogue-like
+         * '@' symbol to hint at its role. 
+         * For now it never overlaps with the scrollbar on the left, since by
+         * the time addresses are large the scrollbar's probably moved down.
+         * That may change with further tweaking.
+         * */
+        int cursor_x = base.x + dim.x - 2; // compensate for space padding
+        cursor_x -= cursor ? dlog2((uint32_t)cursor) / 4 + 1 : 1;
+        mvaddch(base.y, cursor_x, '@');
+        mvchgat(base.y, cursor_x, 1, A_NORMAL, 15, NULL); // '@'
 }
 
 /* Things being considered:
@@ -90,23 +93,34 @@ void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz, const size_t cur
  *
  * ^ scroll bar
  */
-void render_grid(vec2 base, vec2 dim, const size_t buf_sz, const size_t cursor, 
-                const unsigned char* const buf, view v, size_t bytes_per_full_row, const pal* pal) {
-        /* cell between address bars is kinda empty-looking, not sure what to
-         * put there; I tried the name, but it looked out of place/didn't have
-         * enough room for long ones. */
-        //mvaddnstr(0, 2, v.name, grid_x - addr_pad); 
-
+void render_grid(vec2 base, vec2 dim, const size_t buf_sz, const size_t cursor,
+                const unsigned char* const buf, view v, 
+                size_t bytes_per_full_row, const pal* pal) {
         for (int y=base.y, row=0; y<dim.y; y+=v.codom.y, row++) {
                 const size_t dy = cursor + row * bytes_per_full_row;
 
-                // content
                 for (int x=base.x, col=0; x<base.x+dim.x; x+=v.codom.x, col++) {
                         const size_t dx = col * v.dom;
                         if (dy + dx + v.dom <= buf_sz) {
                                 v.render(buf + dy + dx, v.dom, y, x, pal);
                         } else {
-                                for (int i=0;i<v.codom.x;i++) mvaddch(y, x + i, ' ');
+                                /* Wipe unused screenspace. Not sure why
+                                 * erase() doesn't take care of it; for some
+                                 * reason it ends up inheriting attributes from
+                                 * a scrollbar, for some render orderings. 
+                                 */
+                                for (int xi=0;xi<v.codom.x;xi++) {
+                                        for (int yi=0;yi<v.codom.y;yi++) {
+                                                mvaddch(y+yi, x+xi, ' ');
+                                                mvchgat(y+yi, x+xi, 1, 
+                                                        A_NORMAL, 0, NULL);
+                                        }
+                                }
+                                /* Probably ought to re-think this; dead space
+                                 * is only used due to need to move cursor up
+                                 * to EOF. If cursor wasn't tied to top-left
+                                 * screen corner, wouldn't need to keep display
+                                 * blank. */
                         }
                 }
         }

@@ -11,7 +11,7 @@ dnl
 dnl Without it, this could literally be a single C file you wget and tcc -run.
 dnl
 dnl Serious second thoughts about going down the path at all.
-AC_INIT([blindsight],[0.1.0],[amtal@github])
+AC_INIT([blindsight],[0.1.1],[amtal@github])
 
 dnl ################################
 dnl Automake dependencies and config
