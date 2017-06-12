@@ -262,6 +262,7 @@ RF(bits) {
                 int bit = (buf_sz*8 - 1) - i;
                 if ((buf[bit / 8] >> (bit % 8)) & 1) {
                         mvprintw(y, x+i, "%x", bit);
+                        mvchgat(y, x+i, 1, A_NORMAL, pal->gray[i*2+6], NULL);
                 }
         }
 }
