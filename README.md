@@ -32,20 +32,6 @@ its [variations] as examples.
 [Parsec]: https://wiki.haskell.org/Parsec
 [variations]: https://hackage.haskell.org/package/trifecta
 
-# Installing
-
-[![Travis](https://img.shields.io/travis/amtal/blindsight.svg)](https://travis-ci.org/amtal/blindsight) [![Codacy grade](https://img.shields.io/codacy/grade/e8b2d157ee3448f4ac050e586aa085c4.svg)](https://www.codacy.com/app/amtal/blindsight/dashboard) [![license](https://img.shields.io/github/license/amtal/blindsight.svg)](LICENSE)
-
-Mandatory: `ncursesw`, `autotools`, C build environment, Tiny C Compiler.
-Optional: `libtcc.so` on Linux.
-
-```bash
-./bootstrap
-./configure
-make
-sudo make install
-```
-
 # Using
 
 Run some examples (like [examples/bs.c](examples/bs.c#L242)) which are all C
@@ -91,3 +77,18 @@ int main(const int argc, char** argv) {
 This should be useful for one-off CTF tools and experiments during reverse engineering.
 
 ![Simple page permission viewer on raw TLB dumps](https://i.imgur.com/hoLSY8z.gif)
+
+# Installing
+
+[![Travis](https://img.shields.io/travis/amtal/blindsight.svg)](https://travis-ci.org/amtal/blindsight) [![Codacy grade](https://img.shields.io/codacy/grade/e8b2d157ee3448f4ac050e586aa085c4.svg)](https://www.codacy.com/app/amtal/blindsight/dashboard) [![license](https://img.shields.io/github/license/amtal/blindsight.svg)](LICENSE)
+
+Mandatory: `ncursesw`, `autotools`, C build environment, Tiny C Compiler.
+Optional: `libtcc.so` on Linux.
+
+```bash
+./bootstrap
+./configure
+make
+sudo make install
+```
+
