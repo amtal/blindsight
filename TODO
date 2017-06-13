@@ -11,9 +11,9 @@ COULD-A
 SHOULD-A
 ========
 
-[ ] scale log-scale on histogram to match palette depth based on buf_sz
+[x] scale log-scale on histogram to match palette depth based on buf_sz
 
-[ ] figure out what entropy scaling should be depending on size
+[x] figure out what entropy scaling should be depending on size
 
 [~] dwarf fortress depth-style "palettes"
     (entropy is 0123456789, rescaled up to limit)

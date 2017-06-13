@@ -269,7 +269,6 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
 void render_scrollbar(const vec2 base, size_t buf_sz, size_t cursor, view v, viewport vp, const pal* pal) {
         // overview "scroll" address bar (not sure whether any address info will actually go there, yet)
         size_t bar_step = buf_sz / (vp.max_y + 1 - base.y);
-        int bot_arrow = 0;
         for (int y=base.y; y<vp.max_y+1; y++) {
                 size_t cur_end = cursor + vp.bytes_per_full_row * vp.max_y / v.codom.y; // close 'nuff
                 size_t bar = bar_step * y;
@@ -282,8 +281,8 @@ void render_scrollbar(const vec2 base, size_t buf_sz, size_t cursor, view v, vie
                         /* Currently requires 256-color palette. Just inverting
                          * common UI color doesn't look quite as good as fading
                          * in % of bar accessed. Hmm. */
-                        mvaddch(y, base.x, bot_arrow++ ? 'V' : 'A'); // arrow selection isn't perfect FIXME
-                        mvchgat(y, base.x, 1, A_NORMAL, pal->gray[1 + overlap], NULL);
+                        mvprintw(y, base.x, "%x", overlap/2);
+                        mvchgat(y, base.x, 1, A_NORMAL, pal->gray[5 + overlap], NULL);
                 } else if (cursor < bar && cur_end > bar_end) { // viewport covers bar step
                         mvaddch(y, base.x, '#');
                         mvchgat(y, base.x, 1, A_NORMAL, pal->gray[21], NULL);
