@@ -4,7 +4,7 @@ High-density hex viewer focused on visual pattern matching on <1MB binaries.
 covered on Windows. This is a Unix version you can quickly extend and prototype
 on. Supports live code reload for smooth domain-specific prototyping.
 
-![Quick usage demonstration on /bin/ls](https://i.imgur.com/lYa5KVX.gifv)
+![Quick usage demonstration on /bin/ls](https://i.imgur.com/lYa5KVX.png)
 
 # Design Rationale
 
