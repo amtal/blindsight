@@ -4,7 +4,7 @@ High-density hex viewer focused on visual pattern matching on <1MB binaries.
 covered on Windows. This is a Unix version you can quickly extend and prototype
 on. Supports live code reload for smooth domain-specific prototyping.
 
-![Quick usage demonstration on /bin/ls](https://i.imgur.com/dvQ6Syo.gif)
+![Quick usage demonstration on /bin/ls](https://i.imgur.com/lYa5KVX.gifv)
 
 # Design Rationale
 
@@ -49,14 +49,15 @@ sudo make install
 # Using
 
 Run some examples (like [examples/bs.c](examples/bs.c#L242)) which are all C
-scripts executable via the Tiny C Compiler's `-run` option. 
+scripts executable via the Tiny C Compiler's `-run` option.  For fast
+iteration, saved code will be automatically re-loaded by running hex viewers on
+supported platforms. 
 
-![Live code reload demonstration](https://i.imgur.com/9Ez24v5.gif)
+![Live code reload demonstration](https://i.imgur.com/XXob133.gif)
 
 You can write your own views that make use of C libraries, such as the
 Capstone-based disassembly view in [examples/dasm.c](examples/dasm.c).
-Copy-paste liberally from other examples. For fast iteration, saved code will
-be automatically re-loaded by running hex viewers on supported platforms. 
+Copy-paste liberally from other examples.
 
 
 ```c
@@ -87,3 +88,6 @@ int main(const int argc, char** argv) {
 }
 ```
 
+This should be useful for one-off CTF tools and experiments during reverse engineering.
+
+![Simple page permission viewer on raw TLB dumps](https://i.imgur.com/hoLSY8z.gif)
