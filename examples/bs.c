@@ -67,14 +67,15 @@ RF(ent) {
         int hi = (int)floor(ent);
         int lo = (int)(ent * 10) % 10;
 
-        /* There's two approaches that seem to work:
+        /* Playing around a bit, showing class via color and most significant
+         * digit via DF-water-style numbers works pretty well. The interesting
+         * high-entropy region can then be highlighted via background shade,
+         * which keeps it obvious that it's a non-linear highlighting.
          *
-         * - Floor(entropy) as '01234567', char classes as foreground color.
-         * - Floor(entropy) as grayscale background, char classes as foreground
-         *   color, fractional part rendered as digit.
-         *
-         * The latter is more cluttered, less intuitive, and depends on
-         * ncursesw + fancy terminal. I'm keeping it for experimentation.
+         * The scaling trick I do for sub-256byte samples looks a little weird
+         * when flipping between zoom levels, though. Quantization leads to
+         * entropy "changing", very visible with the background shading.
+         * Probably still worth the 256-color/ncursesw dependency.
          * */
         int color = 0;
         if (count[0] == buf_sz) {
@@ -84,48 +85,19 @@ RF(ent) {
                 mvprintw(y, x, "#"); // all Fs
                 color = pal->fg_gray[1][0];
         } else if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
-                //mvprintw(y, x, "a"); // ascii
-                mvprintw(y, x, "%01x", lo); // ascii
-                color = pal->fg_gray[3][hi*3];
-        } else {
-                //mvprintw(y, x, "+"); // binary
-                mvprintw(y, x, "%01x", lo); // binary
-                color = pal->fg_gray[ent > 7.8 ? 5 : 4][hi*3];
-        }
-        mvchgat(y, x, 1, A_NORMAL, color, NULL);
-}
-
-/* Like above, but only with basic colors */
-RF(ent_16c) {
-        uint16_t count[256] = {0}; // histogram of symbol occurances
-        uint8_t classes = 0; // mask of bits seen, used to detect ascii
-        for (int i=0;i<buf_sz;i++) {
-                count[buf[i]]++;
-                classes |= buf[i];
-        }
-
-        double ent = entropy(count, buf_sz);
-        int hi = (int)floor(ent);
-        int lo = (int)(ent * 10) % 10;
-
-        int color = 0;
-        if (count[0] == buf_sz) {
-                mvprintw(y, x, " "); // all 0s
-                color = pal->fg_gray[3][0];
-        } else if (count[255] == buf_sz) {
-                mvprintw(y, x, "#"); // all Fs
-                color = pal->fg_gray[1][0];
-        } else {
                 mvprintw(y, x, "%01x", hi); // ascii
-                if (classes >= ' ' && classes <= 0x7f && !count[0x7f]) {
-                        color = 3;
-                } else {
-                        color = 4;
-                }
+                color = pal->fg_gray[3][0];
+        } else if (ent <= 7.0) {
+                mvprintw(y, x, "%01x", hi); // binary, low entropy
+                color = pal->fg_gray[4][0];
+        } else {
+                mvprintw(y, x, "%01x", hi); // binary, very high entropy
+                // TODO ought to perceptual-brightness scale this
+                int bg = lo ? (int)((float)lo / 10 * 24) : 25;
+                color = pal->fg_gray[lo ? 4 : 5][bg];
         }
         mvchgat(y, x, 1, A_NORMAL, color, NULL);
 }
-
 
 /* Grayscale byte occurance histogram, log-scaled to make low counts stand out.
  * (The log scale/palette isn't tuned to adjusting buf_sz yet, and this view
@@ -270,8 +242,6 @@ RF(bits) {
 const view default_views[] = {
         {32,   /*=>*/ {1, 1, F_256C|F_FG_GRAY}, 
          "entropy", rf_ent, .zoom={16, 256}}, 
-        {32,   /*=>*/ {1, 1},
-         "entropy-simp", rf_ent_16c, .zoom={16, 256}}, 
         {1024, /*=>*/ {9, 17, F_256C|F_PIXELS}, 
          "bytehist", rf_hist, .zoom={64, 4096}},
         {128,  /*=>*/ {1, 65, F_256C|F_PIXELS},
