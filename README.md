@@ -48,7 +48,7 @@ sudo make install
 
 # Using
 
-Run some examples (like [examples/bs.c](examples/bs.c#L270)) which are all C
+Run some examples (like [examples/bs.c](examples/bs.c#L242)) which are all C
 scripts executable via the Tiny C Compiler's `-run` option. 
 
 ![Live code reload demonstration](https://i.imgur.com/9Ez24v5.gif)
