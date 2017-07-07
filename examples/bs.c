@@ -239,6 +239,16 @@ RF(bits) {
         }
 }
 
+RF(braille) {
+        /* Show bits via 8-dot unicode braille.
+         * Probably more pretty than useful, since bits aren't ordered
+         * conveniently for patterns to appear. */
+        assert(buf_sz <= 2 && "bits must fit into one hex char");
+        wchar_t bit[2] = {0x2800 + buf[0], 0};
+        mvaddwstr(y, x, &bit);
+        mvchgat(y, x, 1, A_NORMAL, pal->gray[8 + (buf[0] >> 4)], NULL);
+}
+
 const view default_views[] = {
         {32,   /*=>*/ {1, 1, F_256C|F_FG_GRAY}, 
          "entropy", rf_ent, .zoom={16, 256}}, 
@@ -246,10 +256,12 @@ const view default_views[] = {
          "bytehist", rf_hist, .zoom={64, 4096}},
         {128,  /*=>*/ {1, 65, F_256C|F_PIXELS},
          "bytepix", rf_pixels}, // errors on narrow screens
+        {1, /*=>*/ {1, 1, F_256C|F_UTF8},
+         "braille", rf_braille},
         {4, /*=>*/ {1, 9, F_256C}, "HexII", rf_hexii}, 
         {1, /*=>*/ {1, 3, F_256C}, "HexII", rf_hexii},
-        {16,/*=>*/ {1, 59}, "xxd", rf_xxd, },
-        {1, /*=>*/ {1, 8}, "bits", rf_bits, },
+        {16,/*=>*/ {1, 59}, "xxd", rf_xxd},
+        {1, /*=>*/ {1, 8}, "bits", rf_bits},
         {0},
 };
 
