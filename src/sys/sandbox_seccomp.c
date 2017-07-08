@@ -72,7 +72,7 @@ void sandbox_init() {
         sc |= ALLOW(ctx, SCMP_SYS(mmap)); // adding for portability?
         sc |= ALLOW(ctx, SCMP_SYS(_llseek));
         sc |= ALLOW(ctx, SCMP_SYS(mprotect)); // yeahhhh...
-        sc |= ALLOW(ctx, SCMP_SYS(select);
+        sc |= ALLOW(ctx, SCMP_SYS(select));
         /* it's tempting to disable this w/o TCC, but then I see a state
          * explosion on testing on the horizon... */
 
