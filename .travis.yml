@@ -36,6 +36,14 @@ matrix:
         - brew install ncurses  # built with --enable-widec
                                 # symlinked ncursesw/ncurses.h 
                                 # libncurses.dylib
+    - os: linux
+      env: NOTE="Arch chroot test"
+      dist: precise
+      sudo: required
+      before_install:
+          - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+          - sudo pacman --noconfirm -S autotools tcc ncurses
+
 
 compiler: gcc
 script:
