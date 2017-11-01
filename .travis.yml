@@ -23,8 +23,10 @@ matrix:
           packages: # tcc/seccomp don't seem to be in the whitelist, oh well!
             - libncursesw5-dev
       script:
+        - echo "travis_fold:start:bootstrap_and_configure"
         - ./bootstrap 
         - ./configure 
+        - echo "travis_fold:end:bootstrap_and_configure"
         - make
     - os: linux
       env: NOTE="Ubuntu precise, old automake incapable of clean builds"
@@ -35,8 +37,10 @@ matrix:
         - automake --version      # AC_CONFIG_MACRO_DIRS is showstopper, probably others too.
         - sudo apt-get install -qq libncursesw5-dev libseccomp-dev libtcc-dev tcc
       script:
+        - echo "travis_fold:start:bootstrap_and_configure"
         - ./bootstrap 
         - ./configure 
+        - echo "travis_fold:end:bootstrap_and_configure"
         - make
     - os: osx # amazingly this works
       env: NOTE="Only OSX build I'll ever test"
@@ -55,6 +59,8 @@ matrix:
       sudo: required
       before_install:
         - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+      script: 
+        - echo "travis_fold:end:makepkg"
 
 
 # parsed by arch-travis.sh, not travis-ci:
@@ -65,4 +71,5 @@ arch:
     - ncurses
     - libseccomp  # optional
   script:
+    - echo "travis_fold:start:makepkg"
     - "(cd pkg/pacman && makepkg)"
