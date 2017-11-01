@@ -41,9 +41,7 @@ matrix:
       dist: precise
       sudo: required
       before_install:
-          - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
-          - sudo pacman --noconfirm -S autotools tcc ncurses
-
+        - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
 
 compiler: gcc
 script:
@@ -51,3 +49,12 @@ script:
   - ./configure 
   - make
 
+# parsed by arch-travis.sh, not travis-ci:
+arch:
+  packages:
+    - autoconf  # build-time
+    - tcc
+    - ncurses
+    - libseccomp  # optional
+  script:
+    - "(cd pkg/pacman && makepkg)"
