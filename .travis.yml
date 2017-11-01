@@ -7,21 +7,25 @@
 # The optional features might flow down from Arch/Gentoo's nice build
 # environments in the future.
 language: c
-
-os: linux
-env: NOTE="Ubuntu trusty, close enough to Arch to build reliably"
-dist: trusty
-sudo: false # going to try the fancy Beta stuff
-addons:
-  apt:
-    packages: # tcc/seccomp don't seem to be in the whitelist, oh well!
-      - libncursesw5-dev
+compiler: gcc
 
 matrix:
   allow_failures:
     - os: osx
     - dist: precise
   include:
+    - os: linux
+      env: NOTE="Ubuntu trusty, close enough to Arch to build reliably"
+      dist: trusty
+      sudo: false # going to try the fancy Beta stuff
+      addons:
+        apt:
+          packages: # tcc/seccomp don't seem to be in the whitelist, oh well!
+            - libncursesw5-dev
+      script:
+        - ./bootstrap 
+        - ./configure 
+        - make
     - os: linux
       env: NOTE="Ubuntu precise, old automake incapable of clean builds"
       dist: precise 
@@ -30,6 +34,10 @@ matrix:
         - sudo apt-get update -qq # automake... I'm dependant on at least 1.13? Yuck.
         - automake --version      # AC_CONFIG_MACRO_DIRS is showstopper, probably others too.
         - sudo apt-get install -qq libncursesw5-dev libseccomp-dev libtcc-dev tcc
+      script:
+        - ./bootstrap 
+        - ./configure 
+        - make
     - os: osx # amazingly this works
       env: NOTE="Only OSX build I'll ever test"
       before_install:
@@ -37,6 +45,10 @@ matrix:
         - brew install ncurses  # built with --enable-widec
                                 # symlinked ncursesw/ncurses.h 
                                 # libncurses.dylib
+      script:
+        - ./bootstrap 
+        - ./configure 
+        - make
     - os: linux
       env: NOTE="Arch chroot test"
       dist: precise
@@ -44,11 +56,6 @@ matrix:
       before_install:
         - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
 
-compiler: gcc
-script:
-  - ./bootstrap 
-  - ./configure 
-  - make
 
 # parsed by arch-travis.sh, not travis-ci:
 arch:
