@@ -20,6 +20,10 @@ libtool
 .libs
 .dirstamp
 libblindsight?la*
+blindsight
+
+# Package build artefacts
+pkg/
 
 # general dev stuff, may as well
 tags

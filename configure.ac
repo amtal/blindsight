@@ -157,6 +157,10 @@ AM_COND_IF([HAVE_SANDBOX],[
     AC_MSG_WARN([Ghetto sandbox is enabled, get ready to strace crashes!])
 ])
 
+dnl For now, install bs.c as a standalone hex viewer. It's an incomplete
+dnl work-in-progress that ought to eventually get compiled rather than #! -run,
+dnl but for now... Rename it, then install via a rule in Makefile.am
+AC_CONFIG_FILES([blindsight:examples/bs.c], [chmod +x blindsight])
 
 dnl Cross fingers and generate makefiles.
 AC_CONFIG_FILES([Makefile 

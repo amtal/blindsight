@@ -38,8 +38,7 @@ matrix:
         - sudo apt-get install -qq libncursesw5-dev libseccomp-dev libtcc-dev tcc
       script:
         - echo "travis_fold:start:bootstrap_and_configure"
-        - ./bootstrap 
-        - ./configure 
+        - ./bootstrap && ./configure
         - echo "travis_fold:end:bootstrap_and_configure"
         - make
     - os: osx # amazingly this works
