@@ -28,6 +28,7 @@ matrix:
         - ./configure 
         - echo "travis_fold:end:bootstrap_and_configure"
         - make
+        - make install
     - os: linux
       env: NOTE="Ubuntu precise, old automake incapable of clean builds"
       dist: precise 
@@ -41,6 +42,7 @@ matrix:
         - ./bootstrap && ./configure
         - echo "travis_fold:end:bootstrap_and_configure"
         - make
+        - make install
     - os: osx # amazingly this works
       env: NOTE="Only OSX build I'll ever test"
       before_install:
@@ -52,6 +54,7 @@ matrix:
         - ./bootstrap 
         - ./configure 
         - make
+        - make install
     - os: linux
       env: NOTE="Arch chroot test"
       dist: precise
@@ -61,7 +64,6 @@ matrix:
       script: 
         - echo "travis_fold:end:makepkg"
 
-
 # parsed by arch-travis.sh, not travis-ci:
 arch:
   packages:
@@ -70,5 +72,11 @@ arch:
     - ncurses
     - libseccomp  # optional
   script:
-    - echo "travis_fold:start:makepkg"
+    - echo "travis_fold:start:makepkg -i"
     - "(cd pkg/pacman && makepkg)"
+
+script:
+  - echo "travis_fold:start:smoke_test_cannot_look"
+  - timeout 1 blindsight `which blindsight`
+  - echo "travis_fold:end:smoke_test_cannot_look"
+
