@@ -28,7 +28,12 @@ matrix:
         - ./configure 
         - echo "travis_fold:end:bootstrap_and_configure"
         - make
-        - make install
+        - "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/lib"
+        - "PATH=$PATH:$(pwd)/bin"
+        - "make DESTDIR=$(pwd) install"
+        - echo "travis_fold:start:smoke_test_cannot_look"
+        - time timeout 1 blindsight `which blindsight` || true
+        - echo "travis_fold:end:smoke_test_cannot_look"
     - os: linux
       env: NOTE="Ubuntu precise, old automake incapable of clean builds"
       dist: precise 
@@ -42,7 +47,10 @@ matrix:
         - ./bootstrap && ./configure
         - echo "travis_fold:end:bootstrap_and_configure"
         - make
-        - make install
+        - sudo make install
+        - echo "travis_fold:start:smoke_test_cannot_look"
+        - time timeout 1 blindsight `which blindsight` || true
+        - echo "travis_fold:end:smoke_test_cannot_look"
     - os: osx # amazingly this works
       env: NOTE="Only OSX build I'll ever test"
       before_install:
@@ -55,6 +63,9 @@ matrix:
         - ./configure 
         - make
         - make install
+        - echo "travis_fold:start:smoke_test_cannot_look"
+        - time gtimeout 1 blindsight `which blindsight` || true
+        - echo "travis_fold:end:smoke_test_cannot_look"
     - os: linux
       env: NOTE="Arch chroot test"
       dist: precise
@@ -72,11 +83,9 @@ arch:
     - ncurses
     - libseccomp  # optional
   script:
-    - echo "travis_fold:start:makepkg -i"
-    - "(cd pkg/pacman && makepkg)"
-
-script:
-  - echo "travis_fold:start:smoke_test_cannot_look"
-  - timeout 1 blindsight `which blindsight`
-  - echo "travis_fold:end:smoke_test_cannot_look"
+    - echo "travis_fold:start:makepkg"
+    - "(cd pkg/pacman && makepkg -i)"
+    - echo "travis_fold:start:smoke_test_cannot_look"
+    - time timeout 1 blindsight `which blindsight` || true  # TODO check $? 124
+    - echo "travis_fold:end:smoke_test_cannot_look"
 
