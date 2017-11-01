@@ -1,6 +1,6 @@
 # Maintainer: amtal <github.com/amtal>
 pkgname=blindsight-git
-pkgver=0.1.1.r9.g61f7725
+pkgver=autofilled
 pkgrel=1
 pkgdesc="High-density, terminal-based binary viewer for visual pattern matching"
 arch=('i686' 'x86_64')
@@ -9,10 +9,10 @@ license=('MIT')
 groups=()
 depends=('tcc' 'ncurses')
 makedepends=('autoconf')
-optdepends=('libseccomp')
-provides=("bs.c")
-conflicts=("bs.c")
-replaces=()
+optdepends=('libseccomp: sandboxing')
+provides=('blindsight')
+conflicts=('blindsight')
+replaces=('blindsight')
 backup=()
 source=("blindsight::git+https://github.com/amtal/blindsight.git")
 md5sums=('SKIP')
@@ -32,5 +32,6 @@ build() {
 package() {
   cd "$srcdir/blindsight"
   make DESTDIR="$pkgdir/" install
+  install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE
 }
 
