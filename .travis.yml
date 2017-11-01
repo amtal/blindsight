@@ -33,6 +33,7 @@ matrix:
     - os: osx # amazingly this works
       env: NOTE="Only OSX build I'll ever test"
       before_install:
+        - brew update
         - brew install ncurses  # built with --enable-widec
                                 # symlinked ncursesw/ncurses.h 
                                 # libncurses.dylib
