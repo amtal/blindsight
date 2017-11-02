@@ -51,20 +51,23 @@ matrix:
         - echo "travis_fold:start:smoke_test_cannot_look"
         - time timeout 1 blindsight `which blindsight` || true
         - echo "travis_fold:end:smoke_test_cannot_look"
-    - os: osx # amazingly this works
-      env: NOTE="Only OSX build I'll ever test"
+    - os: osx
+      env: NOTE="OSX via Homebrew"
       before_install:
-        - brew update
-        - brew install ncurses  # built with --enable-widec
-                                # symlinked ncursesw/ncurses.h 
-                                # libncurses.dylib
+        - brew update  # fixes some dependency check for ruby 2.x, sorry :(
+      install:
+        - echo "travis_fold:start:brew_setup"
+        - mkdir Formula && git mv pkg/homebrew/blindsight.rb Formula/
+        - git -c user.name='t' -c user.email='t@t.com' commit -m 't'
+        - mkdir -p `brew --repo`/Library/Taps/travis
+        - ln -s `pwd` `brew --repo`/Library/Taps/travis/homebrew-btest
+        - brew tap --repair
+        - echo "travis_fold:end:brew_setup"
       script:
-        - ./bootstrap 
-        - ./configure 
-        - make
-        - make install
+        - brew install --HEAD blindsight
         - echo "travis_fold:start:smoke_test_cannot_look"
-        - time gtimeout 1 blindsight `which blindsight` || true
+        - "brew test blindsight"
+        - "brew audit --strict blindsight"
         - echo "travis_fold:end:smoke_test_cannot_look"
     - os: linux
       env: NOTE="Arch chroot test"
