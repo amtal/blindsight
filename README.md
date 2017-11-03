@@ -25,7 +25,7 @@ supported platforms.
 
 You can write your own views that make use of C libraries, such as the
 Capstone-based disassembly view in [examples/dasm.c](examples/dasm.c).
-Copy-paste liberally from other examples.
+Copy-paste liberally from other examples, and see [src/blindsight.h](src/blindsight.h#L69) for the `RF(..)` macro and the API available to render functions.
 
 
 ```c

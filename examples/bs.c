@@ -245,7 +245,7 @@ RF(braille) {
          * conveniently for patterns to appear. */
         assert(buf_sz <= 2 && "bits must fit into one hex char");
         wchar_t bit[2] = {0x2800 + buf[0], 0};
-        mvaddwstr(y, x, &bit);
+        mvaddwstr(y, x, (wchar_t*)&bit);
         mvchgat(y, x, 1, A_NORMAL, pal->gray[8 + (buf[0] >> 4)], NULL);
 }
 
