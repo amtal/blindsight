@@ -6,10 +6,14 @@ class Blindsight < Formula
 
   head "https://github.com/amtal/blindsight.git"
 
-  # ncurses is built with --enable-widec (which we need for >256 color pairs)
-  # header in ncursesw/ncurses.h, library in libncurses.dylib
+  # see https://discourse.brew.sh/t/1008 for why autoconf is a direct dep.
+  # "I had trouble finding the exact semantics of :build" loool brew #1
+  depends_on "autoconf" => :build
   depends_on "automake" => :build
   depends_on "libtool" => :build
+
+  # ncurses is built with --enable-widec (which we need for >256 color pairs)
+  # header in ncursesw/ncurses.h, library in libncurses.dylib
   depends_on "ncurses"
   depends_on "tcc"
   

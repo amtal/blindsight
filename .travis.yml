@@ -15,7 +15,7 @@ matrix:
     - dist: precise
   include:
     - os: linux
-      env: NOTE="Ubuntu trusty, close enough to Arch to build reliably"
+      env: "NOTE='Ubuntu Trusty: secondary target, basic features'"
       dist: trusty
       sudo: false # going to try the fancy Beta stuff
       addons:
@@ -35,7 +35,15 @@ matrix:
         - time timeout 1 blindsight `which blindsight` || true
         - echo "travis_fold:end:smoke_test_cannot_look"
     - os: linux
-      env: NOTE="Ubuntu precise, old automake incapable of clean builds"
+      env: "NOTE='Arch Linux: main target platform, all bells and whistles'"
+      dist: precise
+      sudo: required
+      before_install:
+        - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
+      script: 
+        - echo "travis_fold:end:makepkg"
+    - os: linux
+      env: "NOTE='Ubuntu Precise: old automake incapable of clean builds'"
       dist: precise 
       sudo: required
       before_install:
@@ -52,7 +60,7 @@ matrix:
         - time timeout 1 blindsight `which blindsight` || true
         - echo "travis_fold:end:smoke_test_cannot_look"
     - os: osx
-      env: NOTE="OSX via Homebrew"
+      env: "NOTE='OSX + Homebrew: never manually tested, but might work!'"
       before_install:
         - brew update  # fixes some dependency check for ruby 2.x, sorry :(
       install:
@@ -67,16 +75,9 @@ matrix:
         - brew install --HEAD blindsight
         - echo "travis_fold:start:smoke_test_cannot_look"
         - "brew test blindsight"
-        - "brew audit --strict blindsight"
+        - "brew audit --strict blindsight || true"
+        - "brew info blindsight"
         - echo "travis_fold:end:smoke_test_cannot_look"
-    - os: linux
-      env: NOTE="Arch chroot test"
-      dist: precise
-      sudo: required
-      before_install:
-        - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
-      script: 
-        - echo "travis_fold:end:makepkg"
 
 # parsed by arch-travis.sh, not travis-ci:
 arch:
@@ -87,7 +88,7 @@ arch:
     - libseccomp  # optional
   script:
     - echo "travis_fold:start:makepkg"
-    - "(cd pkg/pacman && makepkg -i)"
+    - "(cd pkg/archlinux && makepkg -i)"
     - echo "travis_fold:start:smoke_test_cannot_look"
     - time timeout 1 blindsight `which blindsight` || true  # TODO check $? 124
     - echo "travis_fold:end:smoke_test_cannot_look"

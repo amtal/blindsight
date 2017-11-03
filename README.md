@@ -82,13 +82,9 @@ This should be useful for one-off CTF tools and experiments during reverse engin
 
 [![Travis](https://img.shields.io/travis/amtal/blindsight.svg)](https://travis-ci.org/amtal/blindsight) [![Codacy grade](https://img.shields.io/codacy/grade/e8b2d157ee3448f4ac050e586aa085c4.svg)](https://www.codacy.com/app/amtal/blindsight/dashboard) [![license](https://img.shields.io/github/license/amtal/blindsight.svg)](LICENSE)
 
-Mandatory: `ncursesw`, `autotools`, C build environment, Tiny C Compiler.
-Optional: `libtcc.so` on Linux.
+On Arch, run `makepkg -si` in [pkg/archlinux/](). On OSX, there's a [Homebrew formula](pkg/homebrew/blindsight.rb) you can add to your personal tap and `brew install`. 
 
-```bash
-./bootstrap
-./configure
-make
-sudo make install
-```
+Elsewhere, ensure that you have `ncursesw`, `autotools`, the Tiny C compiler, and a GCC-based build environment. Then `./bootstrap && ./configure && make` and `sudo make install` as usual.
+
+Optional features like live code reload and sandboxing will be disabled if dependencies are missing or the platform isn't supported. To enable live code reload, you may need to build TCC from source to ensure both the standalone binary and the shared library are installed.
 
