@@ -16,6 +16,8 @@ AM_CCFLAGS += -mpreferred-stack-boundary=2
 endif
 
 include_HEADERS = blindsight.h
+otherincludedir = $(includedir)/blindsight
+otherinclude_HEADERS = ../examples/*.h
 
 lib_LTLIBRARIES = libblindsight.la
 libblindsight_la_SOURCES = blindsight.c \
