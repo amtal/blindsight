@@ -196,7 +196,7 @@ VIEW(xxd,
  *
  * Color scheme sorta-matches Radare 2, with the addition of grayscale hex.
  */
-VIEW_(HexII_B, rf_hexii,
+VIEW_(HexII, HexII_B,
         1, /*=>*/ {1, 3, F_256C}
 )(uint8_t* s, size_t n, /*=>*/ int y, int x) {
         for (int i=0, xi=x; i<n*2; i+=2, xi+=2) {
@@ -234,7 +234,9 @@ VIEW_(HexII_B, rf_hexii,
                 mvchgat(y, xi, 2, A_NORMAL, clr, NULL);
         }
 }
-view HexII_DW = {"HexII", rf_hexii, 4, /*=>*/ {1, 9, F_256C}};
+
+// slightly denser version:
+view HexII_DW = {"HexII_DW", HexII_B, 4, /*=>*/ {1, 9, F_256C}};
 
 VIEW(bits, 1, /*=>*/ {1, 8})(uint8_t* s, size_t n, /*=>*/ int y, int x) {
         // assumes 8 bits per char
@@ -267,7 +269,7 @@ view* default_views[] = {
         &bytepix,
         &braille,
         &HexII_DW,
-        &HexII_B,
+        &HexII,
         &xxd,
         &bits,
         0 //{0},
