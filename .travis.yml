@@ -36,8 +36,8 @@ matrix:
         - echo "travis_fold:end:smoke_test_cannot_look"
     - os: linux
       env: "NOTE='Arch Linux: main target platform, all bells and whistles'"
-      dist: precise
       sudo: required
+      services: docker
       before_install:
         - "curl -s https://raw.githubusercontent.com/mikkeloscar/arch-travis/master/arch-travis.sh | bash"
       script: 
@@ -88,7 +88,7 @@ arch:
     - libseccomp  # optional
   script:
     - echo "travis_fold:start:makepkg"
-    - "(cd pkg/archlinux && makepkg -i)"
+    - "(cd pkg/archlinux && makepkg -i --noconfirm)"
     - echo "travis_fold:start:smoke_test_cannot_look"
     - time timeout 1 blindsight `which blindsight` || true  # TODO check $? 124
     - echo "travis_fold:end:smoke_test_cannot_look"
