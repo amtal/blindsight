@@ -43,4 +43,4 @@ else
 endif # SANDBOX
 
 libblindsight_la_CFLAGS = -Wall
-libblindsight_la_LDFLAGS = -export-symbols-regex '(blindsight|blindsight_version)'
+libblindsight_la_LDFLAGS = -export-symbols-regex '(blindsight|blindsight_version|pal)'  # TODO drop 'pal' global once refactored

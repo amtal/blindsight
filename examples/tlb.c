@@ -11,8 +11,10 @@
  *      dump binary tlb.bin 0x2a00000 0x2a00408
  *      shell ./tlb.c tlb.bin
  */
-RF(tlb) {
-        uint32_t w = *(uint32_t*)buf;
+VIEW(a15_TLB,
+        4, /*=>*/ {1, 23}
+)(uint8_t* s, size_t n, /*=>*/ int y, int x) {
+        uint32_t w = *(uint32_t*)s;
         if (!w) return;  // leave unused entries blank
 
         // Parse problem-relevant bits only:
@@ -49,10 +51,7 @@ RF(tlb) {
          * 0x06400000 c13 rw rw - 0x06500000 *   *  *  */
 }
 
-const view views[] = {
-        {4, /*=>*/ {1, 23}, "a15-TLB", rf_tlb},
-        {0}, // last
-};
+view* views[] = {&a15_TLB, 0};
 
 int main(const int argc, char** argv) {
         return blindsight(argc, argv, views, "views");

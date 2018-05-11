@@ -51,24 +51,24 @@ Contemplations:
 
 
 /* Warn on missing stuff - has to run after curses is initialized */
-void check_features_and_warn(const view* views, const char* locale) {
+void check_features_and_warn(const view** views, const char* locale) {
         feature present = 0, needed =0;
 
         if (COLORS >= 256) present |= F_256C;
         if (COLOR_PAIRS >= 0x7fff) present |= F_FG_GRAY|F_GRAY_GRAY;
         if (strstr(locale, "UTF-8")) present |= F_UTF8;
 
-        for (const view* v=views; v->codom.y; v++) {
-                if (v->codom.bounds & ~present) {
+        for (const view** v=views; *v; v++) {
+                if ((*v)->codom.bounds & ~present) {
                         if (!needed) {
                                 def_prog_mode();
                                 endwin(); // drop back to terminal briefly
                                 printf("Warning, these views require additional terminal capabilities:\n");
                         }
 
-                        printf("\t%s\n", v->name);
+                        printf("\t%s\n", (*v)->name);
                 }
-                needed |= v->codom.bounds;
+                needed |= (*v)->codom.bounds;
         }
         if (needed & F_256C) 
                 printf("Need 256+ colors. Set $TERM? Switch terminals?\n");
@@ -89,9 +89,9 @@ void check_features_and_warn(const view* views, const char* locale) {
         }
 }
 
-pal screen_init() {
+palette screen_init() {
         initscr();
-        pal p = palette_init();
+        palette p = palette_init();
 
         raw();                  // do not buffer until line break
         keypad(stdscr, TRUE);   // capture KEY_* function keys
@@ -220,7 +220,7 @@ cmd KEYS[] = {
 /* Printed Nethack-guidebook style in --help, 
  * vim-cheatsheet style in help screen. */
 
-input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
+input_req key_actions(int key, viewport const vp, view const v, palette* pal) {
         input_req req = {0};
 
         switch(key) {
@@ -266,7 +266,7 @@ input_req key_actions(int key, viewport const vp, view const v, pal* pal) {
 }
 
 // TODO: generalize in terms of dims, drop viewport dependency, move into render.c
-void render_scrollbar(const vec2 base, size_t buf_sz, size_t cursor, view v, viewport vp, const pal* pal) {
+void render_scrollbar(const vec2 base, size_t buf_sz, size_t cursor, view v, viewport vp, const palette* pal) {
         // overview "scroll" address bar (not sure whether any address info will actually go there, yet)
         size_t bar_step = buf_sz / (vp.max_y + 1 - base.y);
         for (int y=base.y; y<vp.max_y+1; y++) {
@@ -320,7 +320,12 @@ void render_info(const vec2 base, const view v, const viewport vp) {
          * still summarize files effectively. */
 }
 
-int blindsight(const int argc, char** argv, const view* views, const char* reload_sym) {
+/* TODO sort out a portable theme (may need to drop from 0x7Fff color pairs to
+ * 256, possibly with remapping to still do cool stuff) then refactor palette
+ * code heavily. Poorly named global for now. */
+palette pal;
+
+int blindsight(const int argc, char** argv, const view** views, const char* reload_sym) {
         if (argc != 2) {
                 printf("         _   _ _       _     _     _   _   \n"
                        "        | |_| |_|___ _| |___|_|___| |_| |_ \n"
@@ -338,7 +343,8 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                 return EXIT_FAILURE;
         }
 
-        pal pal = screen_init();
+        palette pal_tmp = screen_init();
+        memcpy(&pal, &pal_tmp, sizeof(pal));
         check_features_and_warn(views, setlocale(LC_CTYPE, ""));
 
 
@@ -361,13 +367,13 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
         size_t cursor = 0;
         signed view_ind = 0;  // index into view array, kept as int for easy rolling
         signed view_num = 0;
-        for (const view* v=views; v->codom.y; v++) {view_num++;}
-        view v = views[view_ind]; // starting view
+        for (const view** v=views; *v; v++) {view_num++;}
+        view v = *views[view_ind]; // starting view
 
         /* Going to keep the buffer as unsigned to make it clear it's data, not
          * strings. int8_t would also do, but would encourage UB casts. */
         size_t buf_sz;
-        const unsigned char* buf = (unsigned char*)mmap_buf(argv[1], &buf_sz); // TODO move to struct return from arg pass?
+        unsigned char* buf = (unsigned char*)mmap_buf(argv[1], &buf_sz); // TODO move to struct return from arg pass?
 
         /* Window layout: there's three major vertical panes all stuffed
          * together as far left as possible. 
@@ -393,7 +399,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
 
                         printf("Re-loading %s... ", argv[0]);
                         views = watcher_reload(reload_sym, 0, reload_error);
-                        v = views[view_ind]; // that's what I get for doing stuff by-value...
+                        v = *views[view_ind]; // that's what I get for doing stuff by-value...
                         assert(views && "live code reload didn't return a symbol!");
                         trigger_reload = false;
                         printf("ok\n");
@@ -417,7 +423,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                         view_ind += req.flip;
                         view_ind = MAX(0, view_ind);
                         view_ind = MIN(view_ind, view_num - 1);
-                        v = views[view_ind];
+                        v = *views[view_ind];
                 } else if (req.zoom && v.zoom.min && v.zoom.max) {
                         v.dom = req.zoom < 0 ? v.dom >> 1 : v.dom << 1;
                         v.dom = MAX(v.zoom.min, v.dom);
@@ -442,7 +448,7 @@ int blindsight(const int argc, char** argv, const view* views, const char* reloa
                                 vp.bytes_per_full_row, v);
                 render_grid(yx(1, addr_width + 2), yx(vp.max_y+1, x_width), 
                                 buf_sz, cursor, buf, v, 
-                                vp.bytes_per_full_row, &pal);
+                                vp.bytes_per_full_row);
                 // View-info window somewhere out of the way.
                 render_info(yx(vp.max_y - 0, vp.max_x - 62), v, vp);
                 refresh();

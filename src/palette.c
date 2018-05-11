@@ -44,8 +44,8 @@
  * on palettes.)
  */
 
-pal palette_init() {
-        pal pal = {
+palette palette_init() {
+        palette pal = {
                 .gray = {
                         0x10, // rgb:000
                         0xe8, 0xe9, 0xea, 0xeb, 0xec, 0xed, 
@@ -113,7 +113,7 @@ pal palette_init() {
         return pal;
 }
 
-void palette_debug_dump(pal* pal) { // for when ^^^ inevitably breaks for mysterious reasons
+void palette_debug_dump(palette* pal) { // for when ^^^ inevitably breaks for mysterious reasons
         erase();
         mvprintw(0, 8, "[linear dump, 0x%x colors, 0x%x pairs]", COLORS, COLOR_PAIRS);
         for (int x=0;x<128;x++) {

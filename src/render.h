@@ -22,8 +22,7 @@ void render_row_addrs(vec2 base, vec2 dim,
 
 void render_grid(vec2 base, vec2 dim, 
         const size_t buf_sz, const size_t cursor, 
-        const unsigned char* const buf, view v, 
-        size_t bytes_per_full_row, const pal* pal);
+        unsigned char* buf, view v, size_t bytes_per_full_row);
 
 /* Utility */
 

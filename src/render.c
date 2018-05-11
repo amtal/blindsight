@@ -94,15 +94,14 @@ void render_row_addrs(vec2 base, vec2 dim, const size_t buf_sz,
  * ^ scroll bar
  */
 void render_grid(vec2 base, vec2 dim, const size_t buf_sz, const size_t cursor,
-                const unsigned char* const buf, view v, 
-                size_t bytes_per_full_row, const pal* pal) {
+                uint8_t* buf, view v, size_t bytes_per_full_row) {
         for (int y=base.y, row=0; y<dim.y; y+=v.codom.y, row++) {
                 const size_t dy = cursor + row * bytes_per_full_row;
 
                 for (int x=base.x, col=0; x<base.x+dim.x; x+=v.codom.x, col++) {
                         const size_t dx = col * v.dom;
                         if (dy + dx + v.dom <= buf_sz) {
-                                v.render(buf + dy + dx, v.dom, y, x, pal);
+                                v.render(buf + dy + dx, v.dom, y, x);
                         } else {
                                 /* Wipe unused screenspace. Not sure why
                                  * erase() doesn't take care of it; for some
