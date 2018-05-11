@@ -25,7 +25,9 @@ supported platforms.
 
 You can write your own views that make use of C libraries, such as the
 Capstone-based disassembly view in [examples/dasm.c](examples/dasm.c).
-Copy-paste liberally from other examples, and see [src/blindsight.h](src/blindsight.h#L69) for the `RF(..)` macro and the API available to render functions.
+Copy-paste liberally from other examples, and see
+[src/blindsight.h](src/blindsight.h#L69) for the `VIEW(..)` struct + function
+definition macro and the API available to render functions.
 
 
 ```c
@@ -34,22 +36,21 @@ Copy-paste liberally from other examples, and see [src/blindsight.h](src/blindsi
 #include <ncurses.h>
 
 /* vim's xxd.c in default mode */
-RF(xxd) {
-        for (int i=0, xi=x; i<buf_sz; i+=2, xi+=5) {
-                mvprintw(y, xi, "%02x%02x ", buf[i], buf[i+1]);
+VIEW(xxd,
+     /* bytes         y, x dimensions */
+        16,   /*=>*/ {1, 59}
+)(uint8_t* s, size_t n, /*=>*/ int y, int x) {
+        for (int i=0, xi=x; i<n; i+=2, xi+=5) {
+                mvprintw(y, xi, "%02x%02x ", s[i], s[i+1]);
         }
-        for (int i=0, xi=x+41; i<buf_sz; i++, xi++) {
-                unsigned char c = buf[i];
-                mvaddch(y, xi, ' ' <= c && c <= '~' ? buf[i] : '.');
+        for (int i=0, xi=x+41; i<n; i++, xi++) {
+                unsigned char c = s[i];
+                mvaddch(y, xi, ' ' <= c && c <= '~' ? c : '.');
         }
         mvchgat(y, x, 57, A_NORMAL, 0, NULL);
 }
 
-const view views[] = {
-/*       bytes       y, x    name   func   */
-        {16, /*=>*/ {1, 59}, "xxd", rf_xxd},
-        {0}, // last
-};
+view* views[] = {&xxd, 0};
 
 int main(const int argc, char** argv) {
         return blindsight(argc, argv, views, "views");

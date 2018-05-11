@@ -19,7 +19,7 @@ view* default_views[] = {
         &HexII,
         &xxd,
         &bits,
-        0 //{0},
+        0
 };
 
 int main(const int argc, char** argv) {
